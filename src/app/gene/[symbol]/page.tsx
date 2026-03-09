@@ -278,7 +278,7 @@ export default function GeneDashboard() {
         return {
           x,
           y: yValue,
-          label: `Variant: ${v.proteinConsequence || v.id}<br>Class: ${getLabelForPoints(v.Points)}<br>Points: ${v.Points || "0"}`,
+          label: `Variant: ${v.proteinConsequence || v.id} <br>Points: ${v.Points || "0"}`,
           color: getColorForPoints(v.Points || "0"),
           size: isHighlighted ? 12 : 8,
           symbol: isHighlighted ? "star" : "circle",

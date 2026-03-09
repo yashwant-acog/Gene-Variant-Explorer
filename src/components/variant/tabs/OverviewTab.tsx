@@ -6,69 +6,70 @@ interface OverviewTabProps {
 }
 
 export default function OverviewTab({ variant }: OverviewTabProps) {
-  // ACMG classification logic based on points
   const pointsField = variant.Points || "0";
   const pts = parseFloat(pointsField);
 
-  const getClassification = (p: number) => {
-    if (isNaN(p)) return "VUS";
-    if (p >= 10) return "Pathogenic";
-    if (p >= 6) return "Likely Pathogenic";
-    if (p >= -5) return "VUS";
-    if (p >= -9) return "Likely Benign";
-    return "Benign";
+  // Classification logic
+  const getClassificationInfo = (p: number) => {
+    if (isNaN(p))
+      return { label: "VUS", colorClass: "bg-amber-400 text-amber-900" };
+    if (p >= 10)
+      return { label: "Pathogenic", colorClass: "bg-red-600 text-white" };
+    if (p >= 6)
+      return {
+        label: "Likely Pathogenic",
+        colorClass: "bg-orange-500 text-white",
+      };
+    if (p >= -5)
+      return { label: "VUS", colorClass: "bg-amber-400 text-amber-900" };
+    if (p >= -9)
+      return {
+        label: "Likely Benign",
+        colorClass: "bg-emerald-400 text-emerald-900",
+      };
+    return { label: "Benign", colorClass: "bg-emerald-500 text-white" };
   };
 
-  const classification = getClassification(pts);
+  const { label: classification, colorClass } = getClassificationInfo(pts);
 
-  const categories = [
-    { label: "Benign", color: "bg-emerald-500", textColor: "text-emerald-700" },
+  // Expanded scale to better handle values ≤ -10
+  const MIN = -20;
+  const MAX = 30;
+  const rangeWidth = MAX - MIN;
+
+  let positionPercent = ((pts - MIN) / rangeWidth) * 100;
+  positionPercent = Math.max(0, Math.min(100, positionPercent)); // clamp
+
+  const displayPoints = Number.isInteger(pts) ? pts.toString() : pts.toFixed(2);
+
+  // Ticks every 5 units
+  const ticks = [-20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30];
+
+  // Labels positioned below the ticks, slightly rotated downward
+  const rangeLabels = [
+    { text: "Benign ≤ −10", pos: 12, colorClass: "bg-emerald-500 text-white" },
     {
-      label: "Likely Benign",
-      color: "bg-emerald-400",
-      textColor: "text-emerald-600",
+      text: "Likely Benign −6 to −9",
+      pos: 28,
+      colorClass: "bg-emerald-400 text-emerald-900",
     },
-    { label: "VUS", color: "bg-amber-400", textColor: "text-amber-700" },
     {
-      label: "Likely Pathogenic",
-      color: "bg-orange-500",
-      textColor: "text-orange-700",
+      text: "VUS −5 to +5",
+      pos: 50,
+      colorClass: "bg-amber-400 text-amber-900",
     },
-    { label: "Pathogenic", color: "bg-red-600", textColor: "text-red-800" },
+    {
+      text: "Likely Pathogenic 6–9",
+      pos: 70,
+      colorClass: "bg-orange-500 text-white",
+    },
+    { text: "Pathogenic ≥ 10", pos: 90, colorClass: "bg-red-600 text-white" },
   ];
-
-  const getIndex = (cls: string) => {
-    if (cls === "Benign") return 0;
-    if (cls === "Likely Benign") return 1;
-    if (cls === "VUS") return 2;
-    if (cls === "Likely Pathogenic") return 3;
-    if (cls === "Pathogenic") return 4;
-    return 2; // Fallback to VUS
-  };
-
-  const activeIndex = getIndex(classification);
-  const activeCategory = categories[activeIndex];
 
   return (
     <div className="space-y-8">
-      {/* ── Info cards (unchanged) ── */}
+      {/* Info cards – unchanged */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Gene
-          </h3>
-          <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {variant.gene}
-          </p>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Chromosome
-          </h3>
-          <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            chr{variant.chromosome}
-          </p>
-        </div>
         <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
             Position / Alleles
@@ -76,6 +77,14 @@ export default function OverviewTab({ variant }: OverviewTabProps) {
           <p className="text-lg font-semibold font-mono text-sm text-gray-900 dark:text-gray-100">
             {variant.position.toLocaleString()} ({variant.reference} →{" "}
             {variant.alternate})
+          </p>
+        </div>
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+            Genomic ID
+          </h3>
+          <p className="text-lg font-semibold font-mono text-sm text-gray-900 dark:text-gray-100">
+            {variant.Genomic_ID}
           </p>
         </div>
         {variant.Mutation_type && (
@@ -88,88 +97,87 @@ export default function OverviewTab({ variant }: OverviewTabProps) {
             </p>
           </div>
         )}
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+            Score Point
+          </h3>
+          <p className="text-lg font-semibold font-mono text-sm text-gray-900 dark:text-gray-100">
+            {variant.Points}
+          </p>
+        </div>
       </div>
 
-      {/* Classification Spectrum Section */}
-      <div className="bg-white dark:bg-gray-800/70 px-20 py-10 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+      {/* ── Precise Linear Scale ── */}
+      <div className="bg-white dark:bg-gray-800/70 px-8 py-10 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-6">
-          ACMG Classification
+          ACMG Classification (Points-based)
         </h3>
 
-        <div className="relative pt-16 pb-16 md:pb-14">
-          {" "}
-          {/* increased top padding for the badge */}
-          {/* Floating badge + arrow — now positioned at the active percentage */}
+        <div className="relative pt-16 pb-24">
+          {/* Floating badge – exactly at real points value */}
           <div
-            className="absolute z-10"
+            className="absolute z-20"
             style={{
-              left: `${(activeIndex / (categories.length - 1)) * 100}%`,
+              left: `${positionPercent}%`,
               transform: "translateX(-50%)",
               top: "0",
             }}
           >
             <div className="flex flex-col items-center">
               <div
-                className={`px-5 py-2.5 rounded-full text-white font-semibold text-base shadow-lg ${activeCategory.color} border-2 ${activeCategory.color.replace(
-                  "bg-",
-                  "border-",
-                )} whitespace-nowrap min-w-[140px] text-center`}
+                className={`px-6 py-3 rounded-full text-white font-semibold text-base shadow-lg ${colorClass} border-2 border-current whitespace-nowrap min-w-[170px] text-center`}
               >
-                {classification}
+                {classification} ({displayPoints})
               </div>
-
-              {/* Arrow pointing down */}
               <div
-                className="w-0 h-0 mt-1 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[10px]"
+                className="w-0 h-0 mt-1 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[12px]"
                 style={{
-                  borderTopColor: activeCategory.color.replace("bg-", "#"),
+                  borderTopColor: colorClass.split(" ")[0].replace("bg-", "#"),
                 }}
               />
             </div>
           </div>
+
           {/* Gradient track */}
-          <div className="h-4 rounded-full overflow-hidden bg-gradient-to-r from-emerald-500 via-amber-400 via-amber-500 to-red-600 mt-8" />
-          {/* Markers and labels */}
-          <div className="relative h-12 mt-5">
-            {categories.map((cat, i) => {
-              const position = (i / (categories.length - 1)) * 100;
-              const isActive = i === activeIndex;
+          <div className="h-5 rounded-full overflow-hidden bg-gradient-to-r from-emerald-500 via-emerald-400 via-amber-400 via-orange-500 to-red-600 mt-10" />
 
+          {/* Ticks & numeric labels */}
+          <div className="relative h-12 mt-3">
+            {ticks.map((tick) => {
+              const pos = ((tick - MIN) / rangeWidth) * 100;
               return (
-                <React.Fragment key={cat.label}>
-                  {/* Marker dot */}
+                <React.Fragment key={tick}>
                   <div
-                    className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-4 border-white dark:border-gray-900 shadow transition-all duration-200 ${
-                      isActive
-                        ? `${cat.color} scale-125 ring-4 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 ${cat.color.replace(
-                            /bg-/g,
-                            "ring-",
-                          )}`
-                        : "bg-gray-300 dark:bg-gray-600"
-                    }`}
-                    style={{
-                      left: `${position}%`,
-                      transform: "translateX(-50%) translateY(-50%)",
-                    }}
+                    className="absolute top-0 w-px h-4 bg-gray-500 dark:bg-gray-400 transform -translate-x-1/2"
+                    style={{ left: `${pos}%` }}
                   />
-
-                  {/* Label */}
                   <div
-                    className={`absolute top-9 text-xs font-medium text-center whitespace-nowrap transform -translate-x-1/2 ${
-                      isActive
-                        ? "font-bold text-gray-900 dark:text-gray-100 scale-105"
-                        : "text-gray-600 dark:text-gray-400"
-                    }`}
-                    style={{ left: `${position}%` }}
+                    className="absolute top-6 text-xs font-medium text-gray-700 dark:text-gray-300 transform -translate-x-1/2"
+                    style={{ left: `${pos}%` }}
                   >
-                    {cat.label}
+                    {tick}
                   </div>
                 </React.Fragment>
               );
             })}
           </div>
+
+          {/* Classification + range labels BELOW the ticks – slightly rotated downward */}
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-10">
-            Suggested classification based on current evidence
+            Current variant score: <strong>{displayPoints}</strong> →{" "}
+            {classification}
+          </div>
+
+          <div className="relative h-16 mt-8">
+            {rangeLabels.map((label, i) => (
+              <div
+                key={i}
+                className={`absolute text-xs font-medium px-3 py-1.5 rounded-lg ${label.colorClass} shadow-sm origin-top whitespace-nowrap`}
+                style={{ left: `${label.pos}%`, top: "0" }}
+              >
+                {label.text}
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -439,61 +439,11 @@ export default function VariantPage({ params }: Props) {
                 >
                   {displayClassification}
                 </span>
-                {variant.sourceType === "custom" && (
+                {/* {variant.sourceType === "custom" && (
                   <span className="px-3 py-1 inline-flex text-xs font-bold uppercase tracking-wider rounded-full border bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
                     Custom Table
                   </span>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-xs uppercase">
-                    Gene
-                  </span>
-                  <span className="text-gray-900 dark:text-gray-100 font-semibold bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-blue-50 px-3 py-1 rounded text-blue-700 font-medium">
-                        {variant.gene}
-                      </div>
-                    </div>
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-xs uppercase">
-                    HGVS
-                  </span>
-                  <span className="text-gray-900 dark:text-gray-100 font-mono text-xs">
-                    {variant.id && (
-                      <div className="bg-purple-50 px-3 py-1 rounded text-purple-700 font-medium">
-                        {variant.id}
-                      </div>
-                    )}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-xs uppercase">
-                    Genomic ID
-                  </span>
-                  <span className="text-gray-900 dark:text-gray-100 font-mono text-xs">
-                    {variant.id && (
-                      <div className="bg-purple-50 px-3 py-1 rounded text-purple-700 font-medium">
-                        {variant.Genomic_ID}
-                      </div>
-                    )}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-xs uppercase">
-                    rsID
-                  </span>
-                  <span className="text-primary-600 dark:text-scientific-accent font-medium">
-                    {variant.rsIDs.length > 0 ? variant.rsIDs.join(", ") : "—"}
-                  </span>
-                </div>
+                )} */}
               </div>
             </div>
           </div>

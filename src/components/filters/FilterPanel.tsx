@@ -155,45 +155,19 @@ export default function FilterPanel({
       </div>
 
       <div className="p-4 space-y-6 flex-1">
-        {/* Source Toggle */}
-        <div>
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-            Data Source
-          </h3>
-          <div className="space-y-2">
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={pendingFilters.clinvar}
-                onChange={(e) =>
-                  setPendingFilters({
-                    ...pendingFilters,
-                    clinvar: e.target.checked,
-                  })
-                }
-                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
-                ClinVar Variants
-              </span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={pendingFilters.custom}
-                onChange={(e) =>
-                  setPendingFilters({
-                    ...pendingFilters,
-                    custom: e.target.checked,
-                  })
-                }
-                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
-                Custom Variants
-              </span>
-            </label>
-          </div>
+        {/* Apply Filter Button */}
+        <div className="p-4 border-t border-gray-200 dark:border-scientific-border bg-white dark:bg-scientific-panel sticky z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+          <button
+            onClick={applyFilters}
+            disabled={!isDirty}
+            className={`w-full py-2.5 px-4 rounded-md font-semibold text-sm transition-all shadow-sm ${
+              isDirty
+                ? "bg-primary-600 hover:bg-primary-700 text-white"
+                : "bg-gray-100 dark:bg-scientific-border text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            Apply Filters
+          </button>
         </div>
 
         {/* Classifications */}
@@ -367,21 +341,6 @@ export default function FilterPanel({
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Apply Filters Button */}
-      <div className="p-4 border-t border-gray-200 dark:border-scientific-border bg-white dark:bg-scientific-panel sticky z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <button
-          onClick={applyFilters}
-          disabled={!isDirty}
-          className={`w-full py-2.5 px-4 rounded-md font-semibold text-sm transition-all shadow-sm ${
-            isDirty
-              ? "bg-primary-600 hover:bg-primary-700 text-white"
-              : "bg-gray-100 dark:bg-scientific-border text-gray-400 cursor-not-allowed"
-          }`}
-        >
-          Apply Filters
-        </button>
       </div>
     </div>
   );

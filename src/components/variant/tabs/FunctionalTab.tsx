@@ -70,8 +70,17 @@ export default function FunctionalTab({
     },
   ];
 
+  const yValues = plotPoints.map((p) => p.y).filter((y) => !isNaN(y));
+  const hasYData = yValues.length > 0;
+  const minY = hasYData ? Math.min(...yValues) : 0;
+  const maxY = hasYData ? Math.max(...yValues) : 1;
+  const yPadding = (maxY - minY) * 0.2 || 0.1; // 20% padding to increase range
+
+  const currentPoint =
+    currentVariantIndex !== -1 ? plotPoints[currentVariantIndex] : null;
+
   const layout = {
-    height: 450,
+    height: 800,
     title: {
       text: "Functional Impact Distribution (Experimental Data)",
       font: { size: 16, weight: "bold" as const },
@@ -85,19 +94,44 @@ export default function FunctionalTab({
     },
     yaxis: {
       title: { text: "P-value Functional" },
-      autorange: "reversed" as const, // Typically smaller p-values are "better"
+      range: [maxY + yPadding, Math.max(0, minY - yPadding)] as [
+        number,
+        number,
+      ], // reversed internally
+      nticks: 20, // increase intervals
       gridcolor: "#f1f5f9",
     },
     plot_bgcolor: "rgba(0,0,0,0)",
     paper_bgcolor: "rgba(0,0,0,0)",
-    margin: { l: 60, r: 40, t: 80, b: 60 },
+    margin: { l: 70, r: 40, t: 150, b: 60 },
     hovermode: "closest" as const,
     font: { family: "Inter, sans-serif" },
+    annotations:
+      currentPoint && !isNaN(currentPoint.x) && !isNaN(currentPoint.y)
+        ? [
+            {
+              x: currentPoint.x,
+              y: currentPoint.y,
+              xref: "x" as const,
+              yref: "y" as const,
+              text: "Current Variant",
+              showarrow: true,
+              arrowhead: 2,
+              ax: 40,
+              ay: -60,
+              arrowcolor: "#16a34a",
+              font: { size: 13, color: "#16a34a", weight: "bold" as const },
+              bgcolor: "rgba(255, 255, 255, 0.9)",
+              bordercolor: "#16a34a",
+              borderpad: 4,
+            },
+          ]
+        : [],
   };
 
   const config = {
     responsive: true,
-    displayModeBar: false,
+    displayModeBar: true, // Allow zoom controls
   };
 
   return (
@@ -117,27 +151,17 @@ export default function FunctionalTab({
                     : "N/A"}
                 </p>
               </div>
-              <div className="text-right">
-                <span className="text-xs text-blue-500 font-medium">
-                  Effect Height
-                </span>
-              </div>
             </div>
             <div className="bg-purple-50/50 dark:bg-purple-900/10 p-5 rounded-xl border border-purple-100 dark:border-purple-900/30 flex justify-between items-center">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">
-                  Pvalue Functional
+                  Pvalue
                 </h3>
                 <p className="text-2xl font-mono font-bold text-gray-900 dark:text-gray-100">
                   {plotPoints[currentVariantIndex].y
                     ? plotPoints[currentVariantIndex].y
                     : "N/A"}
                 </p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-purple-500 font-medium">
-                  Pvalue Height
-                </span>
               </div>
             </div>
           </div>
@@ -154,7 +178,7 @@ export default function FunctionalTab({
                 layout={layout}
                 config={config}
                 useResizeHandler={true}
-                style={{ width: "100%", height: "450px" }}
+                style={{ width: "100%", height: "800px" }}
               />
             </div>
 
@@ -187,7 +211,7 @@ export default function FunctionalTab({
                   style={{ backgroundColor: "#3b82f6" }}
                 ></div>
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                  Gain/Neutral Function
+                  Gain of Function
                 </span>
               </div>
             </div>
