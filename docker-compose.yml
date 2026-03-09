@@ -1,0 +1,7 @@
+services:
+  gene-variant-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gene-variant-explorer
+    restart: always
