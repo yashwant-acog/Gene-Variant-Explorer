@@ -1,0 +1,388 @@
+"use client";
+
+import { useMemo, useState, useEffect } from "react";
+import { Variant } from "@/lib/types";
+
+export interface FilterState {
+  clinvar: boolean;
+  custom: boolean;
+  classifications: string[];
+  vepAnnotations: string[];
+  mutationTypes: string[];
+  afMin: number | "";
+  afMax: number | "";
+  caddMin: number | "";
+  revelMin: number | "";
+  revelMax: number | "";
+}
+
+interface FilterPanelProps {
+  filters: FilterState;
+  setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
+  availableData: Variant[];
+}
+
+export default function FilterPanel({
+  filters,
+  setFilters,
+  availableData,
+}: FilterPanelProps) {
+  // Internal state for pending filters
+  const [pendingFilters, setPendingFilters] = useState<FilterState>(filters);
+
+  // Sync pendingFilters with filters when filters change from outside (e.g. Reset All)
+  useEffect(() => {
+    setPendingFilters(filters);
+  }, [filters]);
+
+  // Extract unique values for dynamic filter options
+  // const uniqueClassifications = useMemo(() => {
+  //     const set = new Set(availableData.map((v) => v.clinvarGermlineClassification));
+  //     return Array.from(set).filter(Boolean).sort();
+  // }, [availableData]);
+
+  const uniqueClassifications = [
+    "Pathogenic",
+    "Likely Pathogenic",
+    "VUS",
+    "Likely Benign",
+    "Benign",
+    "Pathogenic/Likely pathogenic",
+    "Conflicting interpretations of pathogenicity",
+    "Uncertain significance",
+    "Benign/Likely benign",
+    "not provided",
+    "other",
+  ];
+
+  const uniqueVepAnnotations = useMemo(() => {
+    const set = new Set(availableData.map((v) => v.vepAnnotation));
+    return Array.from(set).filter(Boolean).sort();
+  }, [availableData]);
+
+  const uniqueMutationTypes = useMemo(() => {
+    // Since we don't have Mutation_type in Variant interface directly for now,
+    // we'll use established common types or extract from Custom dataset if available.
+    // For FGFR3 specifically, these are the types:
+    return ["Missense", "Nonsense", "Synonymous"];
+  }, []);
+
+  const handleClassificationChange = (cls: string) => {
+    setPendingFilters((prev) => {
+      const isSelected = prev.classifications.includes(cls);
+      return {
+        ...prev,
+        classifications: isSelected
+          ? prev.classifications.filter((c) => c !== cls)
+          : [...prev.classifications, cls],
+      };
+    });
+  };
+
+  const handleVepChange = (vep: string) => {
+    setPendingFilters((prev) => {
+      const isSelected = prev.vepAnnotations.includes(vep);
+      return {
+        ...prev,
+        vepAnnotations: isSelected
+          ? prev.vepAnnotations.filter((v) => v !== vep)
+          : [...prev.vepAnnotations, vep],
+      };
+    });
+  };
+
+  const handleMutationTypeChange = (mt: string) => {
+    setPendingFilters((prev) => {
+      const isSelected = prev.mutationTypes.includes(mt);
+      return {
+        ...prev,
+        mutationTypes: isSelected
+          ? prev.mutationTypes.filter((type) => type !== mt)
+          : [...prev.mutationTypes, mt],
+      };
+    });
+  };
+
+  const applyFilters = () => {
+    setFilters(pendingFilters);
+  };
+
+  const resetFilters = () => {
+    const initialFilters: FilterState = {
+      clinvar: true,
+      custom: true,
+      classifications: [],
+      vepAnnotations: [],
+      mutationTypes: [],
+      afMin: "",
+      afMax: "",
+      caddMin: "",
+      revelMin: "",
+      revelMax: "",
+    };
+    setPendingFilters(initialFilters);
+    setFilters(initialFilters);
+  };
+
+  const isDirty = JSON.stringify(pendingFilters) !== JSON.stringify(filters);
+
+  return (
+    <div className="w-full h-full bg-white dark:bg-scientific-panel border-r border-gray-200 dark:border-scientific-border flex flex-col overflow-y-auto">
+      <div className="p-4 border-b border-gray-200 dark:border-scientific-border sticky top-0 bg-white/90 dark:bg-scientific-panel/90 backdrop-blur z-30 flex justify-between items-center">
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <svg
+            className="w-4 h-4 text-primary-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+            />
+          </svg>
+          Filters
+        </h2>
+        <button
+          onClick={resetFilters}
+          className="text-xs text-primary-600 dark:text-scientific-accent hover:underline"
+        >
+          Reset All
+        </button>
+      </div>
+
+      <div className="p-4 space-y-6 flex-1">
+        {/* Source Toggle */}
+        <div>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+            Data Source
+          </h3>
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={pendingFilters.clinvar}
+                onChange={(e) =>
+                  setPendingFilters({
+                    ...pendingFilters,
+                    clinvar: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                ClinVar Variants
+              </span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={pendingFilters.custom}
+                onChange={(e) =>
+                  setPendingFilters({
+                    ...pendingFilters,
+                    custom: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                Custom Variants
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Classifications */}
+        {uniqueClassifications.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+              Classification
+            </h3>
+            <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-thin">
+              {uniqueClassifications.map((cls) => (
+                <label
+                  key={cls}
+                  className="flex items-center gap-3 cursor-pointer group"
+                >
+                  <input
+                    type="checkbox"
+                    checked={pendingFilters.classifications.includes(cls)}
+                    onChange={() => handleClassificationChange(cls)}
+                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
+                    {cls}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mutation Types */}
+        <div>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+            Mutation Type
+          </h3>
+          <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-thin">
+            {uniqueMutationTypes.map((mt) => (
+              <label
+                key={mt}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <input
+                  type="checkbox"
+                  checked={pendingFilters.mutationTypes.includes(mt)}
+                  onChange={() => handleMutationTypeChange(mt)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
+                  {mt}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* VEP Annotations */}
+        {/* {uniqueVepAnnotations.length > 0 && (
+                    <div>
+                        <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">VEP Annotation</h3>
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-thin">
+                            {uniqueVepAnnotations.map((vep) => (
+                                <label key={vep} className="flex items-center gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={pendingFilters.vepAnnotations.includes(vep)}
+                                        onChange={() => handleVepChange(vep)}
+                                        className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">{vep.replace(/_/g, " ")}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                )} */}
+
+        {/* Numeric Ranges */}
+        <div className="space-y-4 pb-20">
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+            Numeric Scores
+          </h3>
+
+          <div>
+            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1 font-medium">
+              Allele Frequency Range
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                placeholder="Min AF"
+                value={pendingFilters.afMin}
+                onChange={(e) =>
+                  setPendingFilters({
+                    ...pendingFilters,
+                    afMin: e.target.value ? Number(e.target.value) : "",
+                  })
+                }
+                className="w-full text-sm px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                step="0.00001"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="number"
+                placeholder="Max AF"
+                value={pendingFilters.afMax}
+                onChange={(e) =>
+                  setPendingFilters({
+                    ...pendingFilters,
+                    afMax: e.target.value ? Number(e.target.value) : "",
+                  })
+                }
+                className="w-full text-sm px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                step="0.00001"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1 font-medium">
+              Min CADD Score
+            </label>
+            <input
+              type="number"
+              placeholder="e.g. 20"
+              value={pendingFilters.caddMin}
+              onChange={(e) =>
+                setPendingFilters({
+                  ...pendingFilters,
+                  caddMin: e.target.value ? Number(e.target.value) : "",
+                })
+              }
+              className="w-full text-sm px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              step="0.1"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1 font-medium">
+              REVEL Score Range
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                placeholder="Min"
+                value={pendingFilters.revelMin}
+                onChange={(e) =>
+                  setPendingFilters({
+                    ...pendingFilters,
+                    revelMin: e.target.value ? Number(e.target.value) : "",
+                  })
+                }
+                className="w-full text-sm px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                step="0.01"
+                min="0"
+                max="1"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="number"
+                placeholder="Max"
+                value={pendingFilters.revelMax}
+                onChange={(e) =>
+                  setPendingFilters({
+                    ...pendingFilters,
+                    revelMax: e.target.value ? Number(e.target.value) : "",
+                  })
+                }
+                className="w-full text-sm px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                step="0.01"
+                min="0"
+                max="1"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Apply Filters Button */}
+      <div className="p-4 border-t border-gray-200 dark:border-scientific-border bg-white dark:bg-scientific-panel sticky z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <button
+          onClick={applyFilters}
+          disabled={!isDirty}
+          className={`w-full py-2.5 px-4 rounded-md font-semibold text-sm transition-all shadow-sm ${
+            isDirty
+              ? "bg-primary-600 hover:bg-primary-700 text-white"
+              : "bg-gray-100 dark:bg-scientific-border text-gray-400 cursor-not-allowed"
+          }`}
+        >
+          Apply Filters
+        </button>
+      </div>
+    </div>
+  );
+}

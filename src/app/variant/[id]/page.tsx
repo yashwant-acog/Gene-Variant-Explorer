@@ -1,0 +1,507 @@
+"use client";
+
+import React, { use, useMemo } from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import TabLayout from "@/components/layout/TabLayout";
+import { dummyVariants, dummyCustomVariants } from "@/lib/dummyData";
+import { Variant } from "@/lib/types";
+import { useRouter } from "next/navigation";
+
+import OverviewTab from "@/components/variant/tabs/OverviewTab";
+import ClinicalTab from "@/components/variant/tabs/ClinicalTab";
+import FunctionalTab from "@/components/variant/tabs/FunctionalTab";
+import AnnotationTab from "@/components/variant/tabs/AnnotationTab";
+import PopulationTab from "@/components/variant/tabs/PopulationTab";
+import AssociationsTab from "@/components/variant/tabs/AssociationsTab";
+import TherapeuticsTab from "@/components/variant/tabs/TherapeuticsTab";
+import StructureTab from "@/components/variant/tabs/StructureTab";
+import LiteratureTab from "@/components/variant/tabs/LiteratureTab";
+import { useSearchParams } from "next/navigation";
+
+interface Props {
+  params: Promise<{ id: string }>;
+}
+
+export default function VariantPage({ params }: Props) {
+  const resolvedParams = use(params);
+  const cDNA = decodeURIComponent(resolvedParams.id);
+
+  const router = useRouter();
+
+  // Search in both datasets
+  const rawVariant = dummyVariants.find((v) => v.id === cDNA);
+  const customVariant = dummyCustomVariants.find((v) => v.cDNA_change === cDNA);
+
+  // Map to normalized shape for shared UI
+  let variant: Variant;
+
+  if (customVariant) {
+    // Fallback for live ClinVar variants or unknown IDs
+    const genomicParts = (customVariant.Genomic_ID || "").split(":");
+    const parseSci = (val: string) => {
+      if (!val || val.trim() === "NA" || val.trim() === "False") return 0;
+      const parsed = parseFloat(val);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+    console.log("HERE ===== ", dummyCustomVariants[0]);
+    variant = {
+      id: cDNA,
+      gene: "FGFR3",
+      disease:
+        customVariant.condition && customVariant.condition !== "NA"
+          ? customVariant.condition
+          : "Custom Analysis",
+      gnomAD_ID:
+        customVariant.gnomAD && customVariant.gnomAD.trim() !== "NA"
+          ? customVariant.gnomAD.trim()
+          : "N/A",
+      chromosome: genomicParts[0] || "N/A",
+      position: parseInt(genomicParts[1]) || 0,
+      rsIDs: [],
+      reference: genomicParts[2] || "N/A",
+      alternate: genomicParts[3] || "N/A",
+      transcript: "N/A",
+      hgvsConsequence: customVariant.cDNA_change || "",
+      proteinConsequence: customVariant.Protein_change || "",
+      vepAnnotation: "missense_variant",
+      clinvarGermlineClassification: "Unknown", // Add later
+      clinvarVariationID: "",
+      alleleFrequency: parseSci(customVariant["Allele Frequency"]),
+      cadd: Math.abs(parseSci(customVariant.Effect_height)),
+      revel: parseSci(customVariant.C_REVEL),
+      alleleCount: parseSci(customVariant["Allele Count"]),
+      alleleNumber: parseSci(customVariant["Allele Number"]),
+
+      alleleCountAfrican: parseSci(
+        customVariant["Allele Count African/African American"],
+      ),
+      alleleNumberAfrican: parseSci(
+        customVariant["Allele Number African/African American"],
+      ),
+
+      alleleCountAdmixedAmerican: parseSci(
+        customVariant["Allele Count Admixed American"],
+      ),
+      alleleNumberAdmixedAmerican: parseSci(
+        customVariant["Allele Number Admixed American"],
+      ),
+
+      alleleCountAshkenaziJewish: parseSci(
+        customVariant["Allele Count Ashkenazi Jewish"],
+      ),
+      alleleNumberAshkenaziJewish: parseSci(
+        customVariant["Allele Number Ashkenazi Jewish"],
+      ),
+
+      alleleCountEastAsian: parseSci(customVariant["Allele Count East Asian"]),
+      alleleNumberEastAsian: parseSci(
+        customVariant["Allele Number East Asian"],
+      ),
+
+      alleleCountEuropeanFinnish: parseSci(
+        customVariant["Allele Count European (Finnish)"],
+      ),
+      alleleNumberEuropeanFinnish: parseSci(
+        customVariant["Allele Number European (Finnish)"],
+      ),
+
+      alleleCountMiddleEastern: parseSci(
+        customVariant["Allele Count Middle Eastern"],
+      ),
+      alleleNumberMiddleEastern: parseSci(
+        customVariant["Allele Number Middle Eastern"],
+      ),
+
+      alleleCountEuropeanNonFinnish: parseSci(
+        customVariant["Allele Count European (non-Finnish)"],
+      ),
+      alleleNumberEuropeanNonFinnish: parseSci(
+        customVariant["Allele Number European (non-Finnish)"],
+      ),
+
+      alleleCountAmish: parseSci(customVariant["Allele Count Amish"]),
+      alleleNumberAmish: parseSci(customVariant["Allele Number Amish"]),
+
+      alleleCountSouthAsian: parseSci(
+        customVariant["Allele Count South Asian"],
+      ),
+      alleleNumberSouthAsian: parseSci(
+        customVariant["Allele Number South Asian"],
+      ),
+
+      sourceType: "custom",
+      conditions:
+        customVariant.condition && customVariant.condition !== "NA"
+          ? [customVariant.condition]
+          : [],
+      Mutation_type: customVariant.Mutation_type,
+      Points: customVariant?.Points,
+      C_REVEL: customVariant?.C_REVEL,
+      condition: customVariant?.condition,
+      Genomic_ID: customVariant?.Genomic_ID,
+      freq_background: parseSci(customVariant.freq_background),
+      freq_DD: parseSci(customVariant.freq_DD),
+      Effect_height: parseSci(customVariant.Effect_height),
+      Pvalue_height: parseSci(customVariant.Pvalue_height),
+      Effect_ratio: parseSci(customVariant.Effect_ratio),
+      Pvalue_ratio: parseSci(customVariant.Pvalue_ratio),
+      Functional: parseSci(customVariant.Functional),
+      Pvalue_functional: parseSci(customVariant.Pvalue_functional),
+    };
+  } else {
+    variant = {
+      id: cDNA,
+      gene: "FGFR3",
+      disease: "ClinVar Live Data Entry",
+      gnomAD_ID: cDNA,
+      chromosome: "N/A",
+      position: 0,
+      rsIDs: cDNA.startsWith("rs") ? [cDNA] : [],
+      reference: "N/A",
+      alternate: "N/A",
+      transcript: "N/A",
+      hgvsConsequence: "N/A",
+      proteinConsequence: "N/A",
+      vepAnnotation: "missense_variant",
+      clinvarGermlineClassification: "Uncertain significance",
+      clinvarVariationID: "",
+      alleleFrequency: 0,
+      cadd: 0,
+      revel: 0,
+      alleleCount: 0,
+      sourceType: "clinvar",
+    };
+  }
+
+  console.log("Final varinat data = ", variant);
+
+  // Calculate classification based on points
+  const getClassificationByPoints = (pointsStr?: string) => {
+    const pts = parseFloat(pointsStr || "0");
+    if (isNaN(pts)) return "VUS";
+    if (pts >= 10) return "Pathogenic";
+    if (pts >= 6) return "Likely Pathogenic";
+    if (pts >= -5) return "VUS";
+    if (pts >= -9) return "Likely Benign";
+    return "Benign";
+  };
+
+  const displayClassification = getClassificationByPoints(variant?.Points);
+
+  // Generate color classes for Pathogenicity Badge matching Dashboard map
+  const badgeColors =
+    displayClassification === "Pathogenic" ||
+    displayClassification === "Likely Pathogenic"
+      ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-400/10 dark:text-red-400 dark:border-red-400/20"
+      : displayClassification === "VUS"
+        ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/20"
+        : displayClassification.includes("Benign")
+          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:border-emerald-400/20"
+          : "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
+
+  const annotationScatterData = [
+    {
+      x: 10,
+      y: 0.2,
+      label: "Background",
+      color: "rgba(107, 114, 128, 0.3)",
+      size: 6,
+    },
+    {
+      x: 12,
+      y: 0.1,
+      label: "Background",
+      color: "rgba(107, 114, 128, 0.3)",
+      size: 6,
+    },
+    {
+      x: 22,
+      y: 0.6,
+      label: "Background",
+      color: "rgba(107, 114, 128, 0.3)",
+      size: 6,
+    },
+    {
+      x: 28,
+      y: 0.8,
+      label: "Background",
+      color: "rgba(107, 114, 128, 0.3)",
+      size: 6,
+    },
+    {
+      x: 33,
+      y: 0.95,
+      label: "Background",
+      color: "rgba(107, 114, 128, 0.3)",
+      size: 6,
+    },
+    {
+      x: variant.cadd,
+      y: variant.revel,
+      label: variant.gnomAD_ID,
+      color: "#ef4444",
+      size: 12,
+      symbol: "star",
+    },
+  ];
+
+  // Seeded random for consistent dummy data per variant
+  const getSeededRandom = (seed: string) => {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++)
+      h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+    return () => {
+      h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+      h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    };
+  };
+
+  const popDefinitions = useMemo(
+    () => [
+      {
+        name: "African / Af. Am.",
+        countField: "Allele Count African/African American",
+        numField: "Allele Number African/African American",
+      },
+      {
+        name: "Admixed American",
+        countField: "Allele Count Admixed American",
+        numField: "Allele Number Admixed American",
+      },
+      {
+        name: "Ashkenazi Jewish",
+        countField: "Allele Count Ashkenazi Jewish",
+        numField: "Allele Number Ashkenazi Jewish",
+      },
+      {
+        name: "East Asian",
+        countField: "Allele Count East Asian",
+        numField: "Allele Number East Asian",
+      },
+      {
+        name: "European (Finnish)",
+        countField: "Allele Count European (Finnish)",
+        numField: "Allele Number European (Finnish)",
+      },
+      {
+        name: "European (Non-Fi)",
+        countField: "Allele Count European (non-Finnish)",
+        numField: "Allele Number European (non-Finnish)",
+      },
+      {
+        name: "Middle Eastern",
+        countField: "Allele Count Middle Eastern",
+        numField: "Allele Number Middle Eastern",
+      },
+      {
+        name: "South Asian",
+        countField: "Allele Count South Asian",
+        numField: "Allele Number South Asian",
+      },
+      {
+        name: "Amish",
+        countField: "Allele Count Amish",
+        numField: "Allele Number Amish",
+      },
+    ],
+    [],
+  );
+
+  const popDistributions = useMemo(() => {
+    const freqs: Record<string, number[]> = {};
+    const counts: Record<string, number[]> = {};
+    popDefinitions.forEach((p) => {
+      freqs[p.name] = [];
+      counts[p.name] = [];
+    });
+
+    dummyCustomVariants.forEach((v) => {
+      popDefinitions.forEach((p) => {
+        const c = parseFloat(v[p.countField as keyof typeof v] as string);
+        const n = parseFloat(v[p.numField as keyof typeof v] as string);
+        if (!isNaN(c) && c > 0) {
+          counts[p.name].push(c);
+          if (!isNaN(n) && n > 0) {
+            const freq = c / n;
+            freqs[p.name].push(freq);
+          }
+        }
+      });
+    });
+    return { freqs, counts };
+  }, [popDefinitions]);
+
+  const associationStudies = [
+    { name: "UK Biobank GWAS", oddsRatio: 1.2, ciLower: 1.05, ciUpper: 1.35 },
+    { name: "FinnGen Cons.", oddsRatio: 0.95, ciLower: 0.8, ciUpper: 1.1 },
+    { name: "All of Us", oddsRatio: 1.4, ciLower: 1.1, ciUpper: 1.8 },
+    {
+      name: "Meta-Analysis",
+      oddsRatio: 1.15,
+      ciLower: 1.02,
+      ciUpper: 1.28,
+      color: "#ef4444",
+    },
+  ];
+
+  const tabs = [
+    {
+      id: "overview",
+      label: "Overview",
+      content: <OverviewTab variant={variant} />,
+    },
+    {
+      id: "clinical",
+      label: "Clinical",
+      content: <ClinicalTab variant={variant} />,
+    },
+    {
+      id: "functional",
+      label: "Functional",
+      content: (
+        <FunctionalTab variant={variant} isCustom={customVariant !== null} />
+      ),
+    },
+    {
+      id: "annotation",
+      label: "Annotation",
+      content: (
+        <AnnotationTab variant={variant} isCustom={customVariant !== null} />
+      ),
+    },
+    {
+      id: "population",
+      label: "Population",
+      content: (
+        <PopulationTab variant={variant} popDistributions={popDistributions} />
+      ),
+    },
+    {
+      id: "associations",
+      label: "Associations",
+      content: <AssociationsTab variant={variant} />,
+    },
+    {
+      id: "therapeutics",
+      label: "Therapeutics",
+      content: <TherapeuticsTab />,
+    },
+    {
+      id: "structure",
+      label: "3D Structure",
+      content: <StructureTab />,
+    },
+    {
+      id: "literature",
+      label: "Literature",
+      content: <LiteratureTab />,
+    },
+  ];
+
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-scientific-bg">
+      {/* Rich Header Section */}
+      <div className="bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border pt-6 pb-0 shadow-sm z-10">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="mb-4">
+            <p
+              onClick={() => router.back()}
+              className="inline-flex items-center text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-scientific-accent transition-colors cursor-pointer"
+            >
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+              Back to Gene Dashboard
+            </p>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+                  {variant.id}
+                </h1>
+                <span
+                  className={`px-3 py-1 inline-flex text-xs font-bold uppercase tracking-wider rounded-full border ${badgeColors}`}
+                >
+                  {displayClassification}
+                </span>
+                {variant.sourceType === "custom" && (
+                  <span className="px-3 py-1 inline-flex text-xs font-bold uppercase tracking-wider rounded-full border bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
+                    Custom Table
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-xs uppercase">
+                    Gene
+                  </span>
+                  <span className="text-gray-900 dark:text-gray-100 font-semibold bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-blue-50 px-3 py-1 rounded text-blue-700 font-medium">
+                        {variant.gene}
+                      </div>
+                    </div>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-xs uppercase">
+                    HGVS
+                  </span>
+                  <span className="text-gray-900 dark:text-gray-100 font-mono text-xs">
+                    {variant.id && (
+                      <div className="bg-purple-50 px-3 py-1 rounded text-purple-700 font-medium">
+                        {variant.id}
+                      </div>
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-xs uppercase">
+                    Genomic ID
+                  </span>
+                  <span className="text-gray-900 dark:text-gray-100 font-mono text-xs">
+                    {variant.id && (
+                      <div className="bg-purple-50 px-3 py-1 rounded text-purple-700 font-medium">
+                        {variant.Genomic_ID}
+                      </div>
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 dark:text-gray-400 font-medium tracking-wide text-xs uppercase">
+                    rsID
+                  </span>
+                  <span className="text-primary-600 dark:text-scientific-accent font-medium">
+                    {variant.rsIDs.length > 0 ? variant.rsIDs.join(", ") : "—"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Render Tabs directly in Header framing for sleek App feel */}
+          <TabLayout tabs={tabs} className="w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
