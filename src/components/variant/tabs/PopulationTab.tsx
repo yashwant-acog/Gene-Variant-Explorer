@@ -15,9 +15,7 @@ export default function PopulationTab({
   variant,
   popDistributions,
 }: PopulationTabProps) {
-  const [chartView, setChartView] = useState<"distribution" | "bar">(
-    "distribution",
-  );
+  const [chartView, setChartView] = useState<"distribution" | "bar">("bar");
   const [barChartViewMode, setBarChartViewMode] = useState<
     "frequency" | "count"
   >("count");
@@ -175,16 +173,6 @@ export default function PopulationTab({
 
           <div className="flex p-1 bg-gray-100 dark:bg-black/20 rounded-lg w-fit">
             <button
-              onClick={() => setChartView("distribution")}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                chartView === "distribution"
-                  ? "bg-white dark:bg-white/10 text-primary-600 dark:text-white shadow-sm"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              }`}
-            >
-              Distribution Plot
-            </button>
-            <button
               onClick={() => setChartView("bar")}
               className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
                 chartView === "bar"
@@ -193,6 +181,16 @@ export default function PopulationTab({
               }`}
             >
               Frequency Breakdown
+            </button>
+            <button
+              onClick={() => setChartView("distribution")}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                chartView === "distribution"
+                  ? "bg-white dark:bg-white/10 text-primary-600 dark:text-white shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              }`}
+            >
+              Distribution Plot
             </button>
           </div>
         </div>
@@ -212,16 +210,6 @@ export default function PopulationTab({
               <div className="flex justify-end relative z-10 w-full mb-[-40px]">
                 <div className="flex p-1 bg-gray-100 dark:bg-black/20 rounded-lg w-fit mr-4">
                   <button
-                    onClick={() => setBarChartViewMode("frequency")}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                      barChartViewMode === "frequency"
-                        ? "bg-white dark:bg-white/10 text-primary-600 dark:text-white shadow-sm"
-                        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                    }`}
-                  >
-                    Frequency
-                  </button>
-                  <button
                     onClick={() => setBarChartViewMode("count")}
                     className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                       barChartViewMode === "count"
@@ -230,6 +218,16 @@ export default function PopulationTab({
                     }`}
                   >
                     Count
+                  </button>
+                  <button
+                    onClick={() => setBarChartViewMode("frequency")}
+                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                      barChartViewMode === "frequency"
+                        ? "bg-white dark:bg-white/10 text-primary-600 dark:text-white shadow-sm"
+                        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    }`}
+                  >
+                    Frequency
                   </button>
                 </div>
               </div>

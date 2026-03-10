@@ -26,7 +26,7 @@ export default function AnnotationTab({
   };
 
   // Prepare distribution data from all custom variants for this gene
-  const plotData = useMemo(() => {
+  const { plotPoints, currentIndex } = useMemo(() => {
     // Filter variants for the current gene (FGFR3)
     const geneVariants = dummyCustomVariants.filter(
       (v) => variant.gene === "FGFR3", // Currently focusing on FGFR3
@@ -35,53 +35,40 @@ export default function AnnotationTab({
     const points = geneVariants
       .map((v) => ({
         x: parseNum(v.C_REVEL),
-        y: parseNum(v.Points), // Using Points as Y-axis if P-value isn't REVEL-specific
-        // Fallback: If C_REVEL vs Points is redundant, we could use CADD if mapped
-        cadd: parseNum(v.C_REVEL), // Note: In dummy data these seem correlated
+        y: parseNum(v.Pvalue_functional), // Using Pvalue_functional for the plot
         label: v.Protein_change || v.cDNA_change,
         id: v.cDNA_change,
       }))
-      .filter((p) => !isNaN(p.x));
+      .filter((p) => !isNaN(p.x) && !isNaN(p.y));
 
     const currentVariantIndex = points.findIndex(
       (p) => p.id === variant.id || p.id === variant.hgvsConsequence,
     );
 
-    return [
-      {
-        x: points.map((p) => p.x),
-        y: points.map((p) => p.y),
-        mode: "markers" as const,
-        type: "scatter" as const,
-        name: "Genomic Variants",
-        text: points.map(
-          (p) =>
-            `${p.label}<br>C_REVEL: ${p.x.toFixed(3)}<br>Predictive Points: ${p.y.toFixed(1)}`,
-        ),
-        hoverinfo: "text" as const,
-        marker: {
-          size: points.map((_, i) => (i === currentVariantIndex ? 16 : 8)),
-          color: points.map((p, i) =>
-            i === currentVariantIndex
-              ? "#ff0000"
-              : p.x < 0
-                ? "#ef4444"
-                : "#3b82f6",
-          ),
-          symbol: points.map((_, i) =>
-            i === currentVariantIndex ? "star" : "circle",
-          ),
-          line: {
-            color: points.map((_, i) =>
-              i === currentVariantIndex ? "#000000" : "white",
-            ),
-            width: points.map((_, i) => (i === currentVariantIndex ? 2 : 1)),
-          },
-          opacity: points.map((_, i) => (i === currentVariantIndex ? 1 : 0.6)),
-        },
-      },
-    ];
+    return { plotPoints: points, currentIndex: currentVariantIndex };
   }, [variant]);
+
+  const annotations =
+    currentIndex !== -1 && plotPoints[currentIndex]
+      ? [
+          {
+            x: plotPoints[currentIndex].x,
+            y: plotPoints[currentIndex].y,
+            xref: "x" as const,
+            yref: "y" as const,
+            text: "Current Variant",
+            showarrow: true,
+            arrowhead: 2,
+            ax: 40,
+            ay: -60,
+            arrowcolor: "#16a34a",
+            font: { size: 13, color: "#16a34a", weight: "bold" as const },
+            bgcolor: "rgba(255, 255, 255, 0.9)",
+            bordercolor: "#16a34a",
+            borderpad: 4,
+          },
+        ]
+      : [];
 
   return (
     <div className="space-y-6">
@@ -146,66 +133,44 @@ export default function AnnotationTab({
         </div>
         <div className="p-4">
           <Plot
-            data={
-              useMemo(() => {
-                const geneVariants = dummyCustomVariants.filter(
-                  (v) => variant.gene === "FGFR3",
-                );
-
-                const points = geneVariants
-                  .map((v) => ({
-                    x: parseNum(v.C_REVEL),
-                    y: parseNum(v.Pvalue_functional),
-                    label: v.Protein_change || v.cDNA_change,
-                    id: v.cDNA_change,
-                  }))
-                  .filter((p) => !isNaN(p.x) && !isNaN(p.y));
-
-                const currentIndex = points.findIndex(
+            data={[
+              {
+                x: plotPoints.map((p) => p.x),
+                y: plotPoints.map((p) => p.y),
+                mode: "markers" as const,
+                type: "scatter" as const,
+                name: "Variants",
+                text: plotPoints.map(
                   (p) =>
-                    p.id === variant.id || p.id === variant.hgvsConsequence,
-                );
-
-                return [
-                  {
-                    x: points.map((p) => p.x),
-                    y: points.map((p) => p.y),
-                    mode: "markers" as const,
-                    type: "scatter" as const,
-                    name: "Variants",
-                    text: points.map(
-                      (p) =>
-                        `${p.label}<br>C_REVEL: ${p.x.toFixed(3)}<br>P-value: ${p.y.toExponential(2)}`,
+                    `${p.label}<br>C_REVEL: ${p.x.toFixed(3)}<br>P-value: ${p.y.toExponential(2)}`,
+                ),
+                hoverinfo: "text" as const,
+                marker: {
+                  size: plotPoints.map((_, i) => (i === currentIndex ? 16 : 8)),
+                  color: plotPoints.map((p, i) =>
+                    i === currentIndex
+                      ? "#4ade80" // Neon Green
+                      : p.x < 0
+                        ? "#ef4444"
+                        : "#3b82f6",
+                  ),
+                  symbol: plotPoints.map((_, i) =>
+                    i === currentIndex ? "star" : "circle",
+                  ),
+                  line: {
+                    color: plotPoints.map((_, i) =>
+                      i === currentIndex ? "#000000" : "white",
                     ),
-                    hoverinfo: "text" as const,
-                    marker: {
-                      size: points.map((_, i) => (i === currentIndex ? 16 : 8)),
-                      color: points.map((p, i) =>
-                        i === currentIndex
-                          ? "#4ade80" // Neon Green
-                          : p.x < 0
-                            ? "#ef4444"
-                            : "#3b82f6",
-                      ),
-                      symbol: points.map((_, i) =>
-                        i === currentIndex ? "star" : "circle",
-                      ),
-                      line: {
-                        color: points.map((_, i) =>
-                          i === currentIndex ? "#000000" : "white",
-                        ),
-                        width: points.map((_, i) =>
-                          i === currentIndex ? 2 : 1,
-                        ),
-                      },
-                      opacity: points.map((_, i) =>
-                        i === currentIndex ? 1 : 0.6,
-                      ),
-                    },
+                    width: plotPoints.map((_, i) =>
+                      i === currentIndex ? 2 : 1,
+                    ),
                   },
-                ];
-              }, [variant]) as any
-            }
+                  opacity: plotPoints.map((_, i) =>
+                    i === currentIndex ? 1 : 0.6,
+                  ),
+                },
+              },
+            ]}
             layout={{
               autosize: true,
               height: 400,
@@ -213,6 +178,7 @@ export default function AnnotationTab({
               paper_bgcolor: "transparent",
               plot_bgcolor: "transparent",
               hovermode: "closest",
+              annotations: annotations,
               xaxis: {
                 title: {
                   text: "C_REVEL Score",

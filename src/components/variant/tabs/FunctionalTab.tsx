@@ -93,7 +93,7 @@ export default function FunctionalTab({
       gridcolor: "#f1f5f9",
     },
     yaxis: {
-      title: { text: "P-value Functional" },
+      title: { text: "P-value" },
       range: [maxY + yPadding, Math.max(0, minY - yPadding)] as [
         number,
         number,

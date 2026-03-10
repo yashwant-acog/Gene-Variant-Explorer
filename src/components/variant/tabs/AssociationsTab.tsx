@@ -58,11 +58,11 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
                   d="M19 11l-7 7-7-7"
                 />
               </svg>
-              Adult Height Association
+              Height Association
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Distribution of effect size and significance across the gene for
-              Adult Height.
+              Height.
             </p>
           </div>
         </div>
@@ -72,7 +72,7 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
             <div className="grid grid-cols-1 gap-8">
               <ForestPlot
                 studies={forestData}
-                title="Adult Height Association (Forest Plot)"
+                title="Height Association (Forest Plot)"
                 xAxisTitle="Association Effect Size (Beta)"
                 xAxisType="linear"
                 nullEffect={0}
