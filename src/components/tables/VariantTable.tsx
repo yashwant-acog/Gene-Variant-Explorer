@@ -53,9 +53,10 @@ export default function VariantTable({
     : CLINVAR_COLUMNS;
 
   return (
-    <div className="overflow-x-auto w-full">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-scientific-border">
-        <thead className="bg-gray-50 dark:bg-scientific-panel/50">
+    <div className="flex-1 min-h-0 w-full border border-gray-200 dark:border-scientific-border rounded-lg shadow-sm overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-y-auto">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-scientific-border">
+          <thead className="sticky top-0 z-20 bg-gray-50 dark:bg-scientific-panel/90 backdrop-blur shadow-sm">
           <tr>
             {columns.map((col) => {
               let className =
@@ -265,6 +266,7 @@ export default function VariantTable({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

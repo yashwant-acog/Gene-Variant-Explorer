@@ -8,6 +8,7 @@ interface TabLayoutProps {
     defaultActiveId?: string;
     onTabChange?: (id: string) => void;
     className?: string;
+    showContent?: boolean; // New prop to control content rendering
 }
 
 export default function TabLayout({
@@ -15,6 +16,7 @@ export default function TabLayout({
     defaultActiveId,
     onTabChange,
     className = "",
+    showContent = true, // Default to true for backward compatibility
 }: TabLayoutProps) {
     const [activeId, setActiveId] = useState(defaultActiveId || tabs[0]?.id);
 
@@ -52,7 +54,7 @@ export default function TabLayout({
                     })}
                 </nav>
             </div>
-            <div className="p-6">{activeTab?.content}</div>
+            {showContent && <div className="p-6">{activeTab?.content}</div>}
         </div>
     );
 }

@@ -17,8 +17,6 @@ export const metadata: Metadata = {
   description: "Dashboard for analyzing and visualizing FGFR3 gene variants",
 };
 
-import AppLayout from "@/components/layout/AppLayout";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,9 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-[#0f172a]`}
       >
-        <AppLayout>{children}</AppLayout>
+        {children}
       </body>
     </html>
   );

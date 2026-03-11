@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import PageContainer from "@/components/layout/PageContainer";
 import FilterPanel, { FilterState } from "@/components/filters/FilterPanel";
 import VariantTable from "@/components/tables/VariantTable";
 import CustomVariantTable from "@/components/tables/CustomVariantTable";
@@ -16,6 +15,7 @@ import { useEffect } from "react";
 import ColumnSelector from "@/components/tables/ColumnSelector";
 import { CLINVAR_COLUMNS } from "@/components/tables/VariantTable";
 import { CUSTOM_COLUMNS } from "@/components/tables/CustomVariantTable";
+import Navbar from "@/components/layout/Navbar";
 
 type SortOption =
   | "af-desc"
@@ -299,26 +299,32 @@ export default function GeneDashboard() {
   }, [filteredAndSortedVariants, currentPage, pageSize]);
 
   return (
-    <div className="flex overflow-hidden">
-      {/* Left Sidebar (Filters) */}
-      <div
-        className={`transition-all duration-300 ease-in-out shrink-0 h-full ${
-          isSidebarOpen
-            ? "w-72 lg:w-80 translate-x-0"
-            : "w-0 -translate-x-full overflow-hidden"
-        }`}
-      >
-        <FilterPanel
-          filters={filters}
-          setFilters={setFilters}
-          availableData={viewMode === "clinvar" ? clinvarVariants : []}
-        />
-      </div>
+    <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f172a]">
+      {/* Navbar */}
+      <Navbar />
+      
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar (Filters) - Fixed position with internal scroll */}
+        <div
+          className={`shrink-0 h-[calc(100vh-4rem)] overflow-hidden border-r border-gray-200 dark:border-scientific-border bg-white dark:bg-scientific-panel transition-all duration-300 ease-in-out ${
+            isSidebarOpen
+              ? "w-72 lg:w-80"
+              : "w-0 overflow-hidden"
+          }`}
+        >
+          <div className="h-full overflow-y-auto">
+            <FilterPanel
+              filters={filters}
+              setFilters={setFilters}
+              availableData={viewMode === "clinvar" ? clinvarVariants : []}
+            />
+          </div>
+        </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-gray-50/50 dark:bg-scientific-bg/50">
-        {/* Top Control Bar */}
-        <div className="bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border p-4 flex items-center justify-between gap-4 sticky top-0 z-20">
+        {/* Main Content Area - Separate scroll */}
+        <div className="flex-1 flex flex-col min-w-0 h-[calc(100vh-4rem)] relative bg-gray-50/50 dark:bg-scientific-bg/50">
+          {/* Top Control Bar - Sticky within right section */}
+          <div className="shrink-0 bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border p-4 flex items-center justify-between gap-4 sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -344,9 +350,6 @@ export default function GeneDashboard() {
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 hidden sm:block">
               {symbol?.toUpperCase()} Variants Directory
             </h1>
-            <span className="bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 text-xs font-semibold px-2.5 py-0.5 rounded-full ml-2">
-              {filteredAndSortedVariants.length} results
-            </span>
           </div>
 
           <div className="flex bg-gray-100 dark:bg-scientific-border p-1 rounded-lg">
@@ -372,9 +375,34 @@ export default function GeneDashboard() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 flex-1 max-w-2xl justify-end">
+          <div className="flex justify-center flex-none mb-1">
+                <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <button
+                    onClick={() => setMainView("table")}
+                    className={`px-8 py-2 text-sm font-bold uppercase tracking-wider rounded-md transition-all ${
+                      mainView === "table"
+                        ? "bg-white text-primary-700 shadow dark:bg-scientific-panel dark:text-primary-300"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    }`}
+                  >
+                    Table View
+                  </button>
+                  <button
+                    onClick={() => setMainView("plots")}
+                    className={`px-8 py-2 text-sm font-bold uppercase tracking-wider rounded-md transition-all ${
+                      mainView === "plots"
+                        ? "bg-white text-primary-700 shadow dark:bg-scientific-panel dark:text-primary-300"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    }`}
+                  >
+                    Plots View
+                  </button>
+                </div>
+                </div>
+
+          <div className="flex items-center gap-3 flex-1 w-20 justify-end">
             {/* Search Input */}
-            <div className="relative w-full max-w-sm">
+            <div className="relative w-60">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
                   className="h-4 w-4 text-gray-400"
@@ -393,7 +421,7 @@ export default function GeneDashboard() {
               <input
                 type="text"
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
-                placeholder="Search GnomAD ID, rsID, or Protein..."
+                placeholder="Search cDNA or Protein..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -404,7 +432,7 @@ export default function GeneDashboard() {
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer transition-colors"
+                className="block w-20 pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer transition-colors"
               >
                 <option value="id-asc">Sort: ID (A-Z)</option>
                 <option value="points-desc">Sort: Highest Points</option>
@@ -431,10 +459,10 @@ export default function GeneDashboard() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Content Container */}
-        <div className="flex-1 overflow-auto p-4 sm:p-6 flex flex-col gap-6">
+          {/* Content Container - Scrollable independently */}
+          <div className="flex-1 p-4 sm:p-6 flex flex-col gap-6">
           {isLoading && viewMode === "clinvar" ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
@@ -446,35 +474,9 @@ export default function GeneDashboard() {
             </div>
           ) : (
             <>
-              {/* Main View Toggle */}
-              <div className="flex justify-center flex-none mb-1">
-                <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 shadow-sm">
-                  <button
-                    onClick={() => setMainView("table")}
-                    className={`px-8 py-2 text-sm font-bold uppercase tracking-wider rounded-md transition-all ${
-                      mainView === "table"
-                        ? "bg-white text-primary-700 shadow dark:bg-scientific-panel dark:text-primary-300"
-                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    }`}
-                  >
-                    Table View
-                  </button>
-                  <button
-                    onClick={() => setMainView("plots")}
-                    className={`px-8 py-2 text-sm font-bold uppercase tracking-wider rounded-md transition-all ${
-                      mainView === "plots"
-                        ? "bg-white text-primary-700 shadow dark:bg-scientific-panel dark:text-primary-300"
-                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    }`}
-                  >
-                    Plots View
-                  </button>
-                </div>
-              </div>
-
               {mainView === "plots" && (
                 <div className="flex-1 flex flex-col min-h-0">
-                  <PageContainer className="!p-0 !max-w-none shadow-sm relative overflow-hidden flex-1 w-full h-full min-h-[600px]">
+                  <div className="!p-0 !max-w-none shadow-sm relative overflow-hidden flex-1 w-full h-full min-h-[600px]">
                     {/* View Toggle */}
                     <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-white/90 dark:bg-gray-800/90 shadow-sm border border-gray-200 dark:border-gray-700 p-1 rounded-lg backdrop-blur">
                       <button
@@ -550,127 +552,141 @@ export default function GeneDashboard() {
                         />
                       </div>
                     )}
-                  </PageContainer>
+                  </div>
                 </div>
               )}
 
               {mainView === "table" && (
-                <PageContainer className="!p-0 !max-w-none shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
-                  <div className="flex flex-wrap items-center justify-between bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-scientific-border shadow-sm gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        Showing{" "}
-                        <span className="font-semibold text-gray-900 dark:text-gray-100">
-                          {filteredAndSortedVariants.length > 0
-                            ? (currentPage - 1) * pageSize + 1
-                            : 0}
-                        </span>{" "}
-                        to{" "}
-                        <span className="font-semibold text-gray-900 dark:text-gray-100">
-                          {Math.min(
-                            currentPage * pageSize,
-                            filteredAndSortedVariants.length,
-                          )}
-                        </span>{" "}
-                        of{" "}
-                        <span className="font-semibold text-gray-900 dark:text-gray-100">
-                          {filteredAndSortedVariants.length}
-                        </span>{" "}
-                        variants
+                <div className="flex flex-col h-full overflow-hidden">
+                  {/* Table Header Controls - Fixed */}
+                  <div className="shrink-0 bg-gray-50/50 dark:bg-scientific-bg/50">
+                    <div className="shrink-0 flex flex-wrap items-center justify-between bg-white dark:bg-scientific-panel p-3 rounded-t-lg border border-gray-200 dark:border-scientific-border shadow-sm gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          Showing{" "}
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {filteredAndSortedVariants.length > 0
+                              ? (currentPage - 1) * pageSize + 1
+                              : 0}
+                          </span>{" "}
+                          to{" "}
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {Math.min(
+                              currentPage * pageSize,
+                              filteredAndSortedVariants.length,
+                            )}
+                          </span>{" "}
+                          of{" "}
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {filteredAndSortedVariants.length}
+                          </span>{" "}
+                          variants
+                        </div>
+
+                        <div className="h-4 w-px bg-gray-200 dark:bg-scientific-border hidden sm:block"></div>
+
+                        <div className="flex items-center gap-2">
+                          <label
+                            htmlFor="pageSize"
+                            className="text-xs text-gray-500 font-medium uppercase tracking-wider"
+                          >
+                            Rows:
+                          </label>
+                          <select
+                            id="pageSize"
+                            value={pageSize}
+                            onChange={(e) => setPageSize(Number(e.target.value))}
+                            className="text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 px-1 py-0.5 outline-none focus:ring-1 focus:ring-primary-500"
+                          >
+                            {[20, 50, 100, 500].map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
-
-                      <div className="h-4 w-px bg-gray-200 dark:bg-scientific-border hidden sm:block"></div>
-
-                      <div className="flex items-center gap-2">
-                        <label
-                          htmlFor="pageSize"
-                          className="text-xs text-gray-500 font-medium uppercase tracking-wider"
-                        >
-                          Rows:
-                        </label>
-                        <select
-                          id="pageSize"
-                          value={pageSize}
-                          onChange={(e) => setPageSize(Number(e.target.value))}
-                          className="text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 px-1 py-0.5 outline-none focus:ring-1 focus:ring-primary-500"
-                        >
-                          {[20, 50, 100, 500].map((size) => (
-                            <option key={size} value={size}>
-                              {size}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <ColumnSelector
-                        columns={
-                          viewMode === "clinvar"
-                            ? CLINVAR_COLUMNS
-                            : CUSTOM_COLUMNS
-                        }
-                        visibleColumns={
-                          viewMode === "clinvar"
-                            ? visibleClinVarColumns
-                            : visibleCustomColumns
-                        }
-                        onChange={
-                          viewMode === "clinvar"
-                            ? setVisibleClinVarColumns
-                            : setVisibleCustomColumns
-                        }
-                        label="Select Columns"
-                      />
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            setCurrentPage((prev) => Math.max(1, prev - 1))
+                      <div className="flex items-center gap-3">
+                        <ColumnSelector
+                          columns={
+                            viewMode === "clinvar"
+                              ? CLINVAR_COLUMNS
+                              : CUSTOM_COLUMNS
                           }
-                          disabled={currentPage === 1}
-                          className="p-1 px-3 rounded border border-gray-200 dark:border-scientific-border text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          Previous
-                        </button>
-                        <span className="text-sm text-gray-600 dark:text-gray-400 mx-1">
-                          Page{" "}
-                          <span className="font-semibold">{currentPage}</span>{" "}
-                          of {totalPages || 1}
-                        </span>
-                        <button
-                          onClick={() =>
-                            setCurrentPage((prev) =>
-                              Math.min(totalPages, prev + 1),
-                            )
+                          visibleColumns={
+                            viewMode === "clinvar"
+                              ? visibleClinVarColumns
+                              : visibleCustomColumns
                           }
-                          disabled={
-                            currentPage === totalPages || totalPages === 0
+                          onChange={
+                            viewMode === "clinvar"
+                              ? setVisibleClinVarColumns
+                              : setVisibleCustomColumns
                           }
-                          className="p-1 px-3 rounded border border-gray-200 dark:border-scientific-border text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          Next
-                        </button>
+                          label="Select Columns"
+                        />
+
+                        <div className="flex items-center gap-2 sticky top-0 z-40">
+                          <button
+                            onClick={() =>
+                              setCurrentPage((prev) => Math.max(1, prev - 1))
+                            }
+                            disabled={currentPage === 1}
+                            className="p-1 px-3 rounded border border-gray-200 dark:border-scientific-border text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Previous
+                          </button>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 mx-1">
+                            Page{" "}
+                            <span className="font-semibold">{currentPage}</span>{" "}
+                            of {totalPages || 1}
+                          </span>
+                          <button
+                            onClick={() =>
+                              setCurrentPage((prev) =>
+                                Math.min(totalPages, prev + 1),
+                              )
+                            }
+                            disabled={
+                              currentPage === totalPages || totalPages === 0
+                            }
+                            className="p-1 px-3 rounded border border-gray-200 dark:border-scientific-border text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Next
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  {viewMode === "clinvar" ? (
-                    <VariantTable
-                      variants={paginatedVariants}
-                      visibleColumns={visibleClinVarColumns}
-                    />
-                  ) : (
-                    <CustomVariantTable
-                      variants={paginatedVariants as any}
-                      visibleColumns={visibleCustomColumns}
-                    />
-                  )}
-                </PageContainer>
+
+                  {/* Scrollable Table Area */}
+                    {viewMode === "clinvar" ? (
+                      <VariantTable
+                        variants={paginatedVariants}
+                        visibleColumns={visibleClinVarColumns}
+                      />
+                    ) : (
+                      <CustomVariantTable
+                        variants={paginatedVariants as any}
+                        visibleColumns={visibleCustomColumns}
+                      />
+                    )}
+                </div>
               )}
             </>
           )}
+          </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="flex-none w-full border-t border-gray-200 dark:border-scientific-border bg-white dark:bg-scientific-panel py-6 mt-auto">
+        <div className="container mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p>
+            &copy; {new Date().getFullYear()} Biomarin Gene Variant Explorer.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

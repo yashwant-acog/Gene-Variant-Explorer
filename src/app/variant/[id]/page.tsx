@@ -1,12 +1,13 @@
 "use client";
 
-import React, { use, useMemo } from "react";
+import React, { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import TabLayout from "@/components/layout/TabLayout";
 import { dummyVariants, dummyCustomVariants } from "@/lib/dummyData";
 import { Variant } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import Navbar from "@/components/layout/Navbar";
 
 import OverviewTab from "@/components/variant/tabs/OverviewTab";
 import ClinicalTab from "@/components/variant/tabs/ClinicalTab";
@@ -346,6 +347,8 @@ export default function VariantPage({ params }: Props) {
     },
   ];
 
+  const [activeTabId, setActiveTabId] = useState("overview");
+
   const tabs = [
     {
       id: "overview",
@@ -400,10 +403,19 @@ export default function VariantPage({ params }: Props) {
     },
   ];
 
+  const handleTabChange = (id: string) => {
+    setActiveTabId(id);
+  };
+
+  const activeTabContent = tabs.find(t => t.id === activeTabId)?.content || tabs[0].content;
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-scientific-bg">
-      {/* Rich Header Section */}
-      <div className="bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border pt-6 pb-0 shadow-sm z-10">
+      {/* Navbar */}
+      <Navbar />
+
+      {/* Rich Header Section - Sticky */}
+      <div className="bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border pt-6 pb-0 shadow-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="mb-4">
             <p
@@ -424,12 +436,6 @@ export default function VariantPage({ params }: Props) {
                   d="M10 19l-7-7m0 0l7-7m-7 7h18"
                 />
               </svg>
-              Back to Gene Dashboard
-            </p>
-          </div>
-
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
-            <div className="space-y-3">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
                   {variant.id}
@@ -439,19 +445,38 @@ export default function VariantPage({ params }: Props) {
                 >
                   {displayClassification}
                 </span>
-                {/* {variant.sourceType === "custom" && (
-                  <span className="px-3 py-1 inline-flex text-xs font-bold uppercase tracking-wider rounded-full border bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
-                    Custom Table
-                  </span>
-                )} */}
               </div>
-            </div>
+            </p>
           </div>
 
-          {/* Render Tabs directly in Header framing for sleek App feel */}
-          <TabLayout tabs={tabs} className="w-full" />
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
+            <div className="space-y-3"></div>
+          </div>
+
+          {/* Render Tabs in same line as variant.id - Sticky */}
+          <TabLayout 
+            tabs={tabs} 
+            defaultActiveId={activeTabId}
+            onTabChange={handleTabChange}
+            showContent={false}
+            className="w-full" 
+          />
         </div>
       </div>
+
+      {/* Scrollable Content Area */}
+      <div className="container mx-auto px-4 max-w-7xl py-6 flex-1">
+        {activeTabContent}
+      </div>
+
+      {/* Footer */}
+      <footer className="flex-none w-full border-t border-gray-200 dark:border-scientific-border bg-white dark:bg-scientific-panel py-6 mt-auto">
+        <div className="container mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p>
+            &copy; {new Date().getFullYear()} Biomarin Gene Variant Explorer.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
