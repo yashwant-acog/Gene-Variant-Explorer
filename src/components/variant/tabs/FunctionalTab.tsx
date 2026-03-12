@@ -23,10 +23,11 @@ export default function FunctionalTab({
     .map((v) => ({
       x: parseNum(v.Functional),
       y: parseNum(v.Pvalue_functional),
+      negLog10Y: -Math.log10(parseNum(v.Pvalue_functional)), // Transform p-value to -log10
       cDNA: v.cDNA_change,
       protein: v.Protein_change,
     }))
-    .filter((p) => !isNaN(p.x) && !isNaN(p.y));
+    .filter((p) => !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.negLog10Y));
 
   // Find the point for the current variant
   const currentVariantIndex = plotPoints.findIndex(
@@ -36,15 +37,15 @@ export default function FunctionalTab({
   const plotData = [
     {
       x: plotPoints.map((p) => p.x),
-      y: plotPoints.map((p) => p.y),
+      y: plotPoints.map((p) => p.negLog10Y), // Use transformed y-axis
       mode: "markers" as const,
       type: "scatter" as const,
       marker: {
         size: plotPoints.map((_, i) => (i === currentVariantIndex ? 14 : 6)),
-        color: plotPoints.map((p, i) =>
+        color: plotPoints.map((_, i) =>
           i === currentVariantIndex
             ? "#4ade80" // Neon Green for current
-            : p.x < 0
+            : plotPoints[i].x < 0
               ? "#ef4444"
               : "#3b82f6",
         ),
@@ -63,14 +64,14 @@ export default function FunctionalTab({
       },
       text: plotPoints.map(
         (p) =>
-          `${p.protein} (${p.cDNA})<br>Functional: ${p.x}<br>P-value: ${p.y}`,
+          `${p.protein} (${p.cDNA})<br>Functional: ${p.x}<br>P-value: ${p.y}<br>-log10(P): ${p.negLog10Y.toFixed(2)}`,
       ),
       hoverinfo: "text" as const,
       showlegend: false,
     },
   ];
 
-  const yValues = plotPoints.map((p) => p.y).filter((y) => !isNaN(y));
+  const yValues = plotPoints.map((p) => p.negLog10Y).filter((y) => !isNaN(y));
   const hasYData = yValues.length > 0;
   const minY = hasYData ? Math.min(...yValues) : 0;
   const maxY = hasYData ? Math.max(...yValues) : 1;
@@ -80,7 +81,7 @@ export default function FunctionalTab({
     currentVariantIndex !== -1 ? plotPoints[currentVariantIndex] : null;
 
   const layout = {
-    height: 800,
+    height: 600,
     title: {
       text: "Functional Impact Distribution (Experimental Data)",
       font: { size: 16, weight: "bold" as const },
@@ -91,13 +92,14 @@ export default function FunctionalTab({
       zerolinecolor: "#94a3b8",
       zerolinewidth: 1,
       gridcolor: "#f1f5f9",
+      side: "bottom" as const, // Move x-axis to bottom
     },
     yaxis: {
-      title: { text: "P-value" },
-      range: [maxY + yPadding, Math.max(0, minY - yPadding)] as [
+      title: { text: "−log₁₀(p)" },
+      range: [Math.max(0, minY - yPadding), maxY + yPadding] as [
         number,
         number,
-      ], // reversed internally
+      ], // Normal order (bottom to top)
       nticks: 20, // increase intervals
       gridcolor: "#f1f5f9",
     },
@@ -107,11 +109,11 @@ export default function FunctionalTab({
     hovermode: "closest" as const,
     font: { family: "Inter, sans-serif" },
     annotations:
-      currentPoint && !isNaN(currentPoint.x) && !isNaN(currentPoint.y)
+      currentPoint && !isNaN(currentPoint.x) && !isNaN(currentPoint.negLog10Y)
         ? [
             {
               x: currentPoint.x,
-              y: currentPoint.y,
+              y: currentPoint.negLog10Y,
               xref: "x" as const,
               yref: "y" as const,
               text: "Current Variant",
@@ -138,47 +140,15 @@ export default function FunctionalTab({
     <div className="space-y-6">
       {isCustom && (
         <>
-          {/* Splicing cards (unchanged) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-blue-50/50 dark:bg-blue-900/10 p-5 rounded-xl border border-blue-100 dark:border-blue-900/30 flex justify-between items-center">
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">
-                  Functional Score
-                </h3>
-                <p className="text-2xl font-mono font-bold text-gray-900 dark:text-gray-100">
-                  {plotPoints[currentVariantIndex].x
-                    ? plotPoints[currentVariantIndex].x
-                    : "N/A"}
-                </p>
-              </div>
-            </div>
-            <div className="bg-purple-50/50 dark:bg-purple-900/10 p-5 rounded-xl border border-purple-100 dark:border-purple-900/30 flex justify-between items-center">
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">
-                  Pvalue
-                </h3>
-                <p className="text-2xl font-mono font-bold text-gray-900 dark:text-gray-100">
-                  {plotPoints[currentVariantIndex].y
-                    ? plotPoints[currentVariantIndex].y
-                    : "N/A"}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* New Plot Section */}
           <div className="bg-white dark:bg-gray-800/70 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
-              Functional Evidence Overview
-            </h3>
-
             <div className="w-full">
               <Plot
                 data={plotData}
                 layout={layout}
                 config={config}
                 useResizeHandler={true}
-                style={{ width: "100%", height: "800px" }}
+                style={{ width: "100%", height: "600px" }}
               />
             </div>
 
@@ -216,8 +186,7 @@ export default function FunctionalTab({
               </div>
             </div>
             <p className="text-[10px] text-center text-gray-400 dark:text-gray-500 mt-3 italic">
-              Vertical axis is reversed: higher points are more statistically
-              significant.
+              Y-axis shows -log10(P-value): higher values indicate greater statistical significance.
             </p>
           </div>
         </>

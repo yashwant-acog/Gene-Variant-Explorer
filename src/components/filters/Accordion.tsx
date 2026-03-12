@@ -23,7 +23,7 @@ export default function AccordionSection({
           {title}
         </span>
         <svg
-          className={`h-4 w-4 text-gray-400 dark:text-gray-500 transform transition-transform duration-200 ${isOpen ? "rotate-90" : "rotate-0"}`}
+          className={`h-4 w-4 text-gray-400 dark:text-gray-500 transform transition-transform duration-200 ${isOpen ? "rotate-180" : "rotate-0"}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

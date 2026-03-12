@@ -75,60 +75,60 @@ export default function VariantPage({ params }: Props) {
       alleleNumber: parseSci(customVariant["Allele Number"]),
 
       alleleCountAfrican: parseSci(
-        customVariant["Allele Count African/African American"],
+        customVariant["Allele Count African/African American"]
       ),
       alleleNumberAfrican: parseSci(
-        customVariant["Allele Number African/African American"],
+        customVariant["Allele Number African/African American"]
       ),
 
       alleleCountAdmixedAmerican: parseSci(
-        customVariant["Allele Count Admixed American"],
+        customVariant["Allele Count Admixed American"]
       ),
       alleleNumberAdmixedAmerican: parseSci(
-        customVariant["Allele Number Admixed American"],
+        customVariant["Allele Number Admixed American"]
       ),
 
       alleleCountAshkenaziJewish: parseSci(
-        customVariant["Allele Count Ashkenazi Jewish"],
+        customVariant["Allele Count Ashkenazi Jewish"]
       ),
       alleleNumberAshkenaziJewish: parseSci(
-        customVariant["Allele Number Ashkenazi Jewish"],
+        customVariant["Allele Number Ashkenazi Jewish"]
       ),
 
       alleleCountEastAsian: parseSci(customVariant["Allele Count East Asian"]),
       alleleNumberEastAsian: parseSci(
-        customVariant["Allele Number East Asian"],
+        customVariant["Allele Number East Asian"]
       ),
 
       alleleCountEuropeanFinnish: parseSci(
-        customVariant["Allele Count European (Finnish)"],
+        customVariant["Allele Count European (Finnish)"]
       ),
       alleleNumberEuropeanFinnish: parseSci(
-        customVariant["Allele Number European (Finnish)"],
+        customVariant["Allele Number European (Finnish)"]
       ),
 
       alleleCountMiddleEastern: parseSci(
-        customVariant["Allele Count Middle Eastern"],
+        customVariant["Allele Count Middle Eastern"]
       ),
       alleleNumberMiddleEastern: parseSci(
-        customVariant["Allele Number Middle Eastern"],
+        customVariant["Allele Number Middle Eastern"]
       ),
 
       alleleCountEuropeanNonFinnish: parseSci(
-        customVariant["Allele Count European (non-Finnish)"],
+        customVariant["Allele Count European (non-Finnish)"]
       ),
       alleleNumberEuropeanNonFinnish: parseSci(
-        customVariant["Allele Number European (non-Finnish)"],
+        customVariant["Allele Number European (non-Finnish)"]
       ),
 
       alleleCountAmish: parseSci(customVariant["Allele Count Amish"]),
       alleleNumberAmish: parseSci(customVariant["Allele Number Amish"]),
 
       alleleCountSouthAsian: parseSci(
-        customVariant["Allele Count South Asian"],
+        customVariant["Allele Count South Asian"]
       ),
       alleleNumberSouthAsian: parseSci(
-        customVariant["Allele Number South Asian"],
+        customVariant["Allele Number South Asian"]
       ),
 
       sourceType: "custom",
@@ -196,10 +196,10 @@ export default function VariantPage({ params }: Props) {
     displayClassification === "Likely Pathogenic"
       ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-400/10 dark:text-red-400 dark:border-red-400/20"
       : displayClassification === "VUS"
-        ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/20"
-        : displayClassification.includes("Benign")
-          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:border-emerald-400/20"
-          : "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
+      ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/20"
+      : displayClassification.includes("Benign")
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:border-emerald-400/20"
+      : "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
 
   const annotationScatterData = [
     {
@@ -307,7 +307,7 @@ export default function VariantPage({ params }: Props) {
         numField: "Allele Number Amish",
       },
     ],
-    [],
+    []
   );
 
   const popDistributions = useMemo(() => {
@@ -386,81 +386,94 @@ export default function VariantPage({ params }: Props) {
       label: "Associations",
       content: <AssociationsTab variant={variant} />,
     },
-    {
-      id: "therapeutics",
-      label: "Therapeutics",
-      content: <TherapeuticsTab />,
-    },
-    {
-      id: "structure",
-      label: "3D Structure",
-      content: <StructureTab />,
-    },
-    {
-      id: "literature",
-      label: "Literature",
-      content: <LiteratureTab />,
-    },
+    // {
+    //   id: "therapeutics",
+    //   label: "Therapeutics",
+    //   content: <TherapeuticsTab />,
+    // },
+    // {
+    //   id: "structure",
+    //   label: "3D Structure",
+    //   content: <StructureTab />,
+    // },
+    // {
+    //   id: "literature",
+    //   label: "Literature",
+    //   content: <LiteratureTab />,
+    // },
   ];
 
   const handleTabChange = (id: string) => {
     setActiveTabId(id);
   };
 
-  const activeTabContent = tabs.find(t => t.id === activeTabId)?.content || tabs[0].content;
+  const activeTabContent =
+    tabs.find((t) => t.id === activeTabId)?.content || tabs[0].content;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-scientific-bg">
-      {/* Navbar */}
-      <Navbar />
-
       {/* Rich Header Section - Sticky */}
       <div className="bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border pt-6 pb-0 shadow-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="mb-4">
-            <p
-              onClick={() => router.back()}
-              className="inline-flex items-center text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-scientific-accent transition-colors cursor-pointer"
-            >
-              <svg
-                className="w-4 h-4 mr-1"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
+            {/* Left Side: Back Button + Variant ID + Classification */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={() => router.back()}
+                className="inline-flex items-center text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-scientific-accent transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
-                  {variant.id}
-                </h1>
-                <span
-                  className={`px-3 py-1 inline-flex text-xs font-bold uppercase tracking-wider rounded-full border ${badgeColors}`}
+                <svg
+                  className="w-4 h-4 mr-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  {displayClassification}
-                </span>
-              </div>
-            </p>
-          </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  />
+                </svg>
+              </button>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+                {variant.id}
+              </h1>
+              <span
+                className={`px-3 py-1 inline-flex text-xs font-bold uppercase tracking-wider rounded-full border ${badgeColors}`}
+              >
+                {displayClassification}
+              </span>
+              <Link
+                href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${variant.id}&term="${variant.id}"%5BVARNAME%5D`}
+                className="cursor-pointer px-3 py-1 inline-flex text-xs font-bold tracking-wider rounded-full border"
+                target="_blank"
+                >
+                <span className="cursor-pointer">ClinVar</span>
+                <div className="h-4 w-4 ml-1 cursor-pointer">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+                  </svg>
+                </div>
+              </Link>
+            </div>
 
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
-            <div className="space-y-3"></div>
+            {/* Right Side: Tabs */}
+            <div className="w-full md:w-auto">
+              <TabLayout
+                tabs={tabs}
+                defaultActiveId={activeTabId}
+                onTabChange={handleTabChange}
+                showContent={false}
+                className="w-full"
+              />
+            </div>
           </div>
-
-          {/* Render Tabs in same line as variant.id - Sticky */}
-          <TabLayout 
-            tabs={tabs} 
-            defaultActiveId={activeTabId}
-            onTabChange={handleTabChange}
-            showContent={false}
-            className="w-full" 
-          />
         </div>
       </div>
 

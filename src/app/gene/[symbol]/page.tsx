@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
 import FilterPanel, { FilterState } from "@/components/filters/FilterPanel";
 import VariantTable from "@/components/tables/VariantTable";
 import CustomVariantTable from "@/components/tables/CustomVariantTable";
@@ -11,7 +11,6 @@ import ACMGDistribution from "@/components/charts/ACMGDistribution";
 import { dummyCustomVariants } from "@/lib/dummyData";
 import { fetchClinVarVariants } from "@/lib/api";
 import { Variant } from "@/lib/types";
-import { useEffect } from "react";
 import ColumnSelector from "@/components/tables/ColumnSelector";
 import { CLINVAR_COLUMNS } from "@/components/tables/VariantTable";
 import { CUSTOM_COLUMNS } from "@/components/tables/CustomVariantTable";
@@ -69,7 +68,9 @@ const getLabelForPoints = (points?: string): string => {
 export default function GeneDashboard() {
   const params = useParams();
   const symbol = params?.symbol as string;
+  const router = useRouter();
 
+  // Remove useSearchParams to prevent re-renders - read URL directly on mount only
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [mainView, setMainView] = useState<"table" | "plots">("table");
   const [chartView, setChartView] = useState<"scatter" | "bar">("scatter");
@@ -81,25 +82,65 @@ export default function GeneDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [visibleClinVarColumns, setVisibleClinVarColumns] = useState<string[]>(
-    CLINVAR_COLUMNS.map((col) => col.key),
+    CLINVAR_COLUMNS.map((col) => col.key)
   );
   const [visibleCustomColumns, setVisibleCustomColumns] = useState<string[]>(
-    // CUSTOM_COLUMNS.slice(0, 3).map((col) => col.key),
-    ["cDNA_change", "Genomic_ID", "Protein_change", "Mutation_type"],
+    ["cDNA_change", "Genomic_ID", "Protein_change", "Mutation_type"]
   );
 
-  const [filters, setFilters] = useState<FilterState>({
-    clinvar: true,
-    custom: true,
-    classifications: [],
-    vepAnnotations: [],
-    mutationTypes: [],
-    afMin: "",
-    afMax: "",
-    caddMin: "",
-    revelMin: "",
-    revelMax: "",
+  // Initialize filters from URL ONCE on mount using lazy initialization
+  const [filters, setFilters] = useState<FilterState>(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      return {
+        classifications: searchParams.get("classifications")?.split(",").filter(Boolean) || [],
+        vepAnnotations: searchParams.get("vepAnnotations")?.split(",").filter(Boolean) || [],
+        mutationTypes: searchParams.get("mutationTypes")?.split(",").filter(Boolean) || [],
+        afMin: searchParams.get("afMin") ? Number(searchParams.get("afMin")) : "",
+        afMax: searchParams.get("afMax") ? Number(searchParams.get("afMax")) : "",
+        caddMin: searchParams.get("caddMin") ? Number(searchParams.get("caddMin")) : "",
+        revelMin: searchParams.get("revelMin") ? Number(searchParams.get("revelMin")) : "",
+        revelMax: searchParams.get("revelMax") ? Number(searchParams.get("revelMax")) : "",
+      };
+    }
+    return {
+      classifications: [],
+      vepAnnotations: [],
+      mutationTypes: [],
+      afMin: "",
+      afMax: "",
+      caddMin: "",
+      revelMin: "",
+      revelMax: "",
+    };
   });
+
+  // Track if we've initialized to avoid syncing on mount
+  const hasInitializedRef = useRef(false);
+
+  // Sync filters to URL only when user changes them (not on initial mount)
+  useEffect(() => {
+    // Skip on initial mount
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      return;
+    }
+
+    // Build URL params from current filters
+    const params = new URLSearchParams();
+    
+    if (filters.classifications.length > 0) params.set("classifications", filters.classifications.join(","));
+    if (filters.vepAnnotations.length > 0) params.set("vepAnnotations", filters.vepAnnotations.join(","));
+    if (filters.mutationTypes.length > 0) params.set("mutationTypes", filters.mutationTypes.join(","));
+    if (filters.afMin) params.set("afMin", String(filters.afMin));
+    if (filters.afMax) params.set("afMax", String(filters.afMax));
+    if (filters.caddMin) params.set("caddMin", String(filters.caddMin));
+    if (filters.revelMin) params.set("revelMin", String(filters.revelMin));
+    if (filters.revelMax) params.set("revelMax", String(filters.revelMax));
+
+    // Update URL without triggering re-render
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [filters, router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -189,7 +230,7 @@ export default function GeneDashboard() {
         (v) =>
           v.gnomAD_ID.toLowerCase().includes(q) ||
           (v.id && v.id.toLowerCase().includes(q)) ||
-          v.proteinConsequence.toLowerCase().includes(q),
+          v.proteinConsequence.toLowerCase().includes(q)
       );
     }
 
@@ -211,7 +252,7 @@ export default function GeneDashboard() {
           return filters.classifications.includes(calculatedClass);
         }
         return filters.classifications.includes(
-          v.clinvarGermlineClassification,
+          v.clinvarGermlineClassification
         );
       });
     }
@@ -220,7 +261,7 @@ export default function GeneDashboard() {
     if (filters.mutationTypes.length > 0) {
       result = result.filter(
         (v) =>
-          v.Mutation_type && filters.mutationTypes.includes(v.Mutation_type),
+          v.Mutation_type && filters.mutationTypes.includes(v.Mutation_type)
       );
     }
 
@@ -278,7 +319,9 @@ export default function GeneDashboard() {
         return {
           x,
           y: yValue,
-          label: `Variant: ${v.proteinConsequence || v.id} <br>Points: ${v.Points || "0"}`,
+          label: `Variant: ${v.proteinConsequence || v.id} <br>Points: ${
+            v.Points || "0"
+          }`,
           color: getColorForPoints(v.Points || "0"),
           size: isHighlighted ? 12 : 8,
           symbol: isHighlighted ? "star" : "circle",
@@ -302,14 +345,12 @@ export default function GeneDashboard() {
     <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f172a]">
       {/* Navbar */}
       <Navbar />
-      
+
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar (Filters) - Fixed position with internal scroll */}
         <div
           className={`shrink-0 h-[calc(100vh-4rem)] overflow-hidden border-r border-gray-200 dark:border-scientific-border bg-white dark:bg-scientific-panel transition-all duration-300 ease-in-out ${
-            isSidebarOpen
-              ? "w-72 lg:w-80"
-              : "w-0 overflow-hidden"
+            isSidebarOpen ? "w-72 lg:w-80" : "w-0 overflow-hidden"
           }`}
         >
           <div className="h-full overflow-y-auto">
@@ -325,341 +366,368 @@ export default function GeneDashboard() {
         <div className="flex-1 flex flex-col min-w-0 h-[calc(100vh-4rem)] relative bg-gray-50/50 dark:bg-scientific-bg/50">
           {/* Top Control Bar - Sticky within right section */}
           <div className="shrink-0 bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border p-4 flex items-center justify-between gap-4 sticky top-0 z-20">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-scientific-border text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
-              aria-label="Toggle Filters"
-              title="Toggle Filters"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-scientific-border text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                aria-label="Toggle Filters"
+                title="Toggle Filters"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h7"
-                />
-              </svg>
-            </button>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 hidden sm:block">
-              {symbol?.toUpperCase()} Variants Directory
-            </h1>
-          </div>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h7"
+                  />
+                </svg>
+              </button>
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 hidden sm:block">
+                {symbol?.toUpperCase()} Variants Directory
+              </h1>
+            </div>
 
-          <div className="flex bg-gray-100 dark:bg-scientific-border p-1 rounded-lg">
-            <button
-              onClick={() => setViewMode("clinvar")}
-              className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
-                viewMode === "clinvar"
-                  ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              }`}
-            >
-              ClinVar
-            </button>
-            <button
-              onClick={() => setViewMode("custom")}
-              className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
-                viewMode === "custom"
-                  ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              }`}
-            >
-              Custom
-            </button>
-          </div>
+            <div className="flex bg-gray-100 dark:bg-scientific-border p-1 rounded-lg">
+              <button
+                onClick={() => setViewMode("clinvar")}
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
+                  viewMode === "clinvar"
+                    ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
+                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                }`}
+              >
+                ClinVar
+              </button>
+              <button
+                onClick={() => setViewMode("custom")}
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
+                  viewMode === "custom"
+                    ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
+                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                }`}
+              >
+                Custom
+              </button>
+            </div>
 
-          <div className="flex justify-center flex-none mb-1">
-                <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 shadow-sm">
-                  <button
-                    onClick={() => setMainView("table")}
-                    className={`px-8 py-2 text-sm font-bold uppercase tracking-wider rounded-md transition-all ${
-                      mainView === "table"
-                        ? "bg-white text-primary-700 shadow dark:bg-scientific-panel dark:text-primary-300"
-                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    }`}
+            <div className="flex justify-center flex-none mb-1 ml-6">
+              <div className="inline-flex">
+                <button
+                  onClick={() => setMainView("table")}
+                  className={`
+                  whitespace-nowrap cursor-pointer flex py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 mx-1
+                  ${
+                    mainView === "table"
+                      ? "border-primary-500 text-primary-600 dark:text-scientific-accent dark:border-scientific-accent"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600"
+                  }
+                `}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
                   >
+                    <path d="M4 8H20V5H4V8ZM14 19V10H10V19H14ZM16 19H20V10H16V19ZM8 19V10H4V19H8ZM3 3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3Z"></path>
+                  </svg>
+                  <span className="ml-1">
                     Table View
-                  </button>
-                  <button
-                    onClick={() => setMainView("plots")}
-                    className={`px-8 py-2 text-sm font-bold uppercase tracking-wider rounded-md transition-all ${
-                      mainView === "plots"
-                        ? "bg-white text-primary-700 shadow dark:bg-scientific-panel dark:text-primary-300"
-                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    }`}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setMainView("plots")}
+                  className={`
+                  whitespace-nowrap cursor-pointer flex py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 mx-1
+                  ${
+                    mainView === "plots"
+                      ? "border-primary-500 text-primary-600 dark:text-scientific-accent dark:border-scientific-accent"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600"
+                  }
+                `}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
                   >
+                    <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
+                  </svg>
+                  <span className="ml-1">
                     Plots View
-                  </button>
-                </div>
-                </div>
-
-          <div className="flex items-center gap-3 flex-1 w-20 justify-end">
-            {/* Search Input */}
-            <div className="relative w-60">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg
-                  className="h-4 w-4 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-              <input
-                type="text"
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
-                placeholder="Search cDNA or Protein..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            {/* Sort Dropdown */}
-            <div className="relative shrink-0">
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="block w-20 pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer transition-colors"
-              >
-                <option value="id-asc">Sort: ID (A-Z)</option>
-                <option value="points-desc">Sort: Highest Points</option>
-                <option value="points-asc">Sort: Lowest Points</option>
-                <option value="af-desc">Sort: Highest AF</option>
-                <option value="af-asc">Sort: Lowest AF</option>
-                <option value="cadd-desc">Sort: Highest CADD</option>
-                <option value="revel-desc">Sort: Highest REVEL</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
+                  </span>
+                </button>
               </div>
             </div>
-          </div>
+
+            <div className="flex items-center gap-3 flex-1 w-20 justify-end">
+              {/* Search Input */}
+              <div className="relative w-60">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                  placeholder="Search cDNA or Protein..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Sort Dropdown */}
+              <div className="relative shrink-0">
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as SortOption)}
+                  className="block w-20 pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer transition-colors"
+                >
+                  <option value="id-asc">Sort: ID (A-Z)</option>
+                  <option value="points-desc">Sort: Highest Points</option>
+                  <option value="points-asc">Sort: Lowest Points</option>
+                  <option value="af-desc">Sort: Highest AF</option>
+                  <option value="af-asc">Sort: Lowest AF</option>
+                  <option value="cadd-desc">Sort: Highest CADD</option>
+                  <option value="revel-desc">Sort: Highest REVEL</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Content Container - Scrollable independently */}
           <div className="flex-1 p-4 sm:p-6 flex flex-col gap-6">
-          {isLoading && viewMode === "clinvar" ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 border-4 border-primary-500/20 border-t-primary-500 rounded-full animate-spin"></div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Fetching core ClinVar data for {symbol}...
-                </p>
-              </div>
-            </div>
-          ) : (
-            <>
-              {mainView === "plots" && (
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="!p-0 !max-w-none shadow-sm relative overflow-hidden flex-1 w-full h-full min-h-[600px]">
-                    {/* View Toggle */}
-                    <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-white/90 dark:bg-gray-800/90 shadow-sm border border-gray-200 dark:border-gray-700 p-1 rounded-lg backdrop-blur">
-                      <button
-                        onClick={() => setChartView("scatter")}
-                        className={`flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
-                          chartView === "scatter"
-                            ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
-                            : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                        }`}
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13 10V3L4 14h7v7l9-11h-7z"
-                          />
-                        </svg>
-                        Scatter Distribution
-                      </button>
-                      <button
-                        onClick={() => setChartView("bar")}
-                        className={`flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
-                          chartView === "bar"
-                            ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
-                            : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                        }`}
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                          />
-                        </svg>
-                        Composition Bar
-                      </button>
-                    </div>
-
-                    {chartView === "scatter" ? (
-                      <ScatterPlot
-                        data={classificationScatterData}
-                        xLabel="Protein Position (AA)"
-                        yLabel="ACMG Classification"
-                        title="Variant Classification Showcase"
-                        height="100%"
-                        yTickVals={[0, 1, 2, 3, 4]}
-                        yTickText={[
-                          "Benign",
-                          "Likely Benign",
-                          "VUS",
-                          "Likely Pathogenic",
-                          "Pathogenic",
-                        ]}
-                      />
-                    ) : (
-                      <div className="p-4 h-full">
-                        <ACMGDistribution
-                          variants={filteredAndSortedVariants}
-                          title="ACMG Aggregate Composition"
-                          height="100%"
-                        />
-                      </div>
-                    )}
-                  </div>
+            {isLoading && viewMode === "clinvar" ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-4 border-primary-500/20 border-t-primary-500 rounded-full animate-spin"></div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Fetching core ClinVar data for {symbol}...
+                  </p>
                 </div>
-              )}
-
-              {mainView === "table" && (
-                <div className="flex flex-col h-full overflow-hidden">
-                  {/* Table Header Controls - Fixed */}
-                  <div className="shrink-0 bg-gray-50/50 dark:bg-scientific-bg/50">
-                    <div className="shrink-0 flex flex-wrap items-center justify-between bg-white dark:bg-scientific-panel p-3 rounded-t-lg border border-gray-200 dark:border-scientific-border shadow-sm gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          Showing{" "}
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            {filteredAndSortedVariants.length > 0
-                              ? (currentPage - 1) * pageSize + 1
-                              : 0}
-                          </span>{" "}
-                          to{" "}
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            {Math.min(
-                              currentPage * pageSize,
-                              filteredAndSortedVariants.length,
-                            )}
-                          </span>{" "}
-                          of{" "}
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            {filteredAndSortedVariants.length}
-                          </span>{" "}
-                          variants
-                        </div>
-
-                        <div className="h-4 w-px bg-gray-200 dark:bg-scientific-border hidden sm:block"></div>
-
-                        <div className="flex items-center gap-2">
-                          <label
-                            htmlFor="pageSize"
-                            className="text-xs text-gray-500 font-medium uppercase tracking-wider"
+              </div>
+            ) : (
+              <>
+                {mainView === "plots" && (
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="!p-0 !max-w-none shadow-sm relative overflow-hidden flex-1 w-full h-full min-h-[600px]">
+                      {/* View Toggle */}
+                      <div className="flex inline-flex m-4">
+                        <button
+                          onClick={() => setChartView("scatter")}
+                          className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                            chartView === "scatter"
+                              ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
+                              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                          }`}
+                        >
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            Rows:
-                          </label>
-                          <select
-                            id="pageSize"
-                            value={pageSize}
-                            onChange={(e) => setPageSize(Number(e.target.value))}
-                            className="text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 px-1 py-0.5 outline-none focus:ring-1 focus:ring-primary-500"
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 10V3L4 14h7v7l9-11h-7z"
+                            />
+                          </svg>
+                          Scatter Distribution
+                        </button>
+                        <button
+                          onClick={() => setChartView("bar")}
+                          className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                            chartView === "bar"
+                              ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
+                              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                          }`}
+                        >
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            {[20, 50, 100, 500].map((size) => (
-                              <option key={size} value={size}>
-                                {size}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                            />
+                          </svg>
+                          Composition Bar
+                        </button>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <ColumnSelector
-                          columns={
-                            viewMode === "clinvar"
-                              ? CLINVAR_COLUMNS
-                              : CUSTOM_COLUMNS
-                          }
-                          visibleColumns={
-                            viewMode === "clinvar"
-                              ? visibleClinVarColumns
-                              : visibleCustomColumns
-                          }
-                          onChange={
-                            viewMode === "clinvar"
-                              ? setVisibleClinVarColumns
-                              : setVisibleCustomColumns
-                          }
-                          label="Select Columns"
+                      {chartView === "scatter" ? (
+                        <ScatterPlot
+                          data={classificationScatterData}
+                          xLabel="Protein Position (AA)"
+                          yLabel="ACMG Classification"
+                          title="Variant Classification Showcase"
+                          height="100%"
+                          yTickVals={[0, 1, 2, 3, 4]}
+                          yTickText={[
+                            "Benign",
+                            "Likely Benign",
+                            "VUS",
+                            "Likely Pathogenic",
+                            "Pathogenic",
+                          ]}
                         />
+                      ) : (
+                        <div className="p-4 h-full">
+                          <ACMGDistribution
+                            variants={filteredAndSortedVariants}
+                            title="ACMG Aggregate Composition"
+                            height="100%"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-                        <div className="flex items-center gap-2 sticky top-0 z-40">
-                          <button
-                            onClick={() =>
-                              setCurrentPage((prev) => Math.max(1, prev - 1))
+                {mainView === "table" && (
+                  <div className="flex flex-col h-full overflow-hidden">
+                    {/* Table Header Controls - Fixed */}
+                    <div className="shrink-0 bg-gray-50/50 dark:bg-scientific-bg/50">
+                      <div className="shrink-0 flex flex-wrap items-center justify-between bg-white dark:bg-scientific-panel p-3 rounded-t-lg border border-gray-200 dark:border-scientific-border shadow-sm gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            Showing{" "}
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                              {filteredAndSortedVariants.length > 0
+                                ? (currentPage - 1) * pageSize + 1
+                                : 0}
+                            </span>{" "}
+                            to{" "}
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                              {Math.min(
+                                currentPage * pageSize,
+                                filteredAndSortedVariants.length
+                              )}
+                            </span>{" "}
+                            of{" "}
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                              {filteredAndSortedVariants.length}
+                            </span>{" "}
+                            variants
+                          </div>
+
+                          <div className="h-4 w-px bg-gray-200 dark:bg-scientific-border hidden sm:block"></div>
+
+                          <div className="flex items-center gap-2">
+                            <label
+                              htmlFor="pageSize"
+                              className="text-xs text-gray-500 font-medium uppercase tracking-wider"
+                            >
+                              Rows:
+                            </label>
+                            <select
+                              id="pageSize"
+                              value={pageSize}
+                              onChange={(e) =>
+                                setPageSize(Number(e.target.value))
+                              }
+                              className="text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 px-1 py-0.5 outline-none focus:ring-1 focus:ring-primary-500"
+                            >
+                              {[25, 50, 100, 500].map((size) => (
+                                <option key={size} value={size}>
+                                  {size}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <ColumnSelector
+                            columns={
+                              viewMode === "clinvar"
+                                ? CLINVAR_COLUMNS
+                                : CUSTOM_COLUMNS
                             }
-                            disabled={currentPage === 1}
-                            className="p-1 px-3 rounded border border-gray-200 dark:border-scientific-border text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Previous
-                          </button>
-                          <span className="text-sm text-gray-600 dark:text-gray-400 mx-1">
-                            Page{" "}
-                            <span className="font-semibold">{currentPage}</span>{" "}
-                            of {totalPages || 1}
-                          </span>
-                          <button
-                            onClick={() =>
-                              setCurrentPage((prev) =>
-                                Math.min(totalPages, prev + 1),
-                              )
+                            visibleColumns={
+                              viewMode === "clinvar"
+                                ? visibleClinVarColumns
+                                : visibleCustomColumns
                             }
-                            disabled={
-                              currentPage === totalPages || totalPages === 0
+                            onChange={
+                              viewMode === "clinvar"
+                                ? setVisibleClinVarColumns
+                                : setVisibleCustomColumns
                             }
-                            className="p-1 px-3 rounded border border-gray-200 dark:border-scientific-border text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Next
-                          </button>
+                            label="Select Columns"
+                          />
+
+                          <div className="flex items-center gap-2 sticky top-0 z-40">
+                            <button
+                              onClick={() =>
+                                setCurrentPage((prev) => Math.max(1, prev - 1))
+                              }
+                              disabled={currentPage === 1}
+                              className="p-1 px-3 rounded border border-gray-200 dark:border-scientific-border text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Previous
+                            </button>
+                            <span className="text-sm text-gray-600 dark:text-gray-400 mx-1">
+                              Page{" "}
+                              <span className="font-semibold">
+                                {currentPage}
+                              </span>{" "}
+                              of {totalPages || 1}
+                            </span>
+                            <button
+                              onClick={() =>
+                                setCurrentPage((prev) =>
+                                  Math.min(totalPages, prev + 1)
+                                )
+                              }
+                              disabled={
+                                currentPage === totalPages || totalPages === 0
+                              }
+                              className="p-1 px-3 rounded border border-gray-200 dark:border-scientific-border text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Next
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Scrollable Table Area */}
+                    {/* Scrollable Table Area */}
                     {viewMode === "clinvar" ? (
                       <VariantTable
                         variants={paginatedVariants}
@@ -671,10 +739,10 @@ export default function GeneDashboard() {
                         visibleColumns={visibleCustomColumns}
                       />
                     )}
-                </div>
-              )}
-            </>
-          )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

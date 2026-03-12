@@ -5,8 +5,6 @@ import { Variant } from "@/lib/types";
 import AccordionSection from "./Accordion";
 
 export interface FilterState {
-  clinvar: boolean;
-  custom: boolean;
   classifications: string[];
   vepAnnotations: string[];
   mutationTypes: string[];
@@ -110,8 +108,6 @@ export default function FilterPanel({
 
   const resetFilters = () => {
     const initialFilters: FilterState = {
-      clinvar: true,
-      custom: true,
       classifications: [],
       vepAnnotations: [],
       mutationTypes: [],

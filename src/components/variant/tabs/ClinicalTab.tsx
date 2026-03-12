@@ -1,5 +1,6 @@
 import React from "react";
 import { Variant } from "@/lib/types";
+import Link from "next/link";
 
 interface ClinicalTabProps {
   variant: Variant;
@@ -39,6 +40,23 @@ export default function ClinicalTab({ variant }: ClinicalTabProps) {
           </svg>
           Associated Conditions
         </h3>
+
+        <Link
+          href={`https://gnomad.broadinstitute.org/variant/${variant.Genomic_ID?.replaceAll(":", "-")}?dataset=gnomad_r4`}
+          target="_blank"
+          className="mb-8 cursor-pointer flex inline-flex bg-primary-50 text-blue-700 dark:bg-primary-900/20 dark:text-primary-300 px-3 py-1.5 rounded-3xl text-sm font-medium border border-blue-400 dark:border-primary-800/30"
+        >
+          <span className="">gnoMAD</span>
+          <div className="h-4 w-4 ml-1">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+            </svg>
+          </div>
+        </Link>
 
         {variant?.condition != "NA" ? (
           <div className="flex flex-wrap gap-2">

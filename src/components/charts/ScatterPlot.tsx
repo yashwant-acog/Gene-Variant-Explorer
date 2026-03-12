@@ -68,10 +68,18 @@ export default function ScatterPlot({
   }
 
   return (
-    <div className="w-full bg-white dark:bg-scientific-panel border border-gray-200 dark:border-scientific-border rounded-lg shadow-sm overflow-hidden">
+    <div className="w-full m-4 bg-white dark:bg-scientific-panel border border-gray-200 dark:border-scientific-border rounded-lg shadow-sm overflow-hidden">
       {title && (
         <div className="p-3 border-b border-gray-200 dark:border-scientific-border bg-gray-50/50 dark:bg-black/20">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            <div className="h-4 w-4 inline-block mr-2">
+              <svg 
+                className="w-4 h-4 text-primary-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+              ><path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path></svg>
+            </div>
             {title}
           </h3>
         </div>
