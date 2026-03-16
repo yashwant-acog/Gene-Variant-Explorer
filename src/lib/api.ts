@@ -37,7 +37,6 @@ function mapApiHitToVariant(hit: any): Variant {
         clinvarVariationID: String(c.variant_id || ""),
         alleleFrequency: 0, // Not in simple clinvar field query
         cadd: 0,
-        revel: 0,
         sift: 0,
         polyphen: 0,
         alleleCountAfrican: 0,
