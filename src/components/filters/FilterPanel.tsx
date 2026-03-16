@@ -176,6 +176,7 @@ export default function FilterPanel({
           </AccordionSection>
         )}
       </div>
+      <div className="h-[0.5px] bg-gray-400 mx-4 mb-4 mt-1"></div>
 
       <div className="px-4 py-1">
         {/* Mutation Types */}
@@ -200,6 +201,7 @@ export default function FilterPanel({
           </div>
         </AccordionSection>
       </div>
+      <div className="h-[0.5px] bg-gray-400 mx-4 mb-4 mt-1"></div>
 
       <div className="px-4 py-1">
         <AccordionSection title="Numeric Scores" defaultOpen={true}>

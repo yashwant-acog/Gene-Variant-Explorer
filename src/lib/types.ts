@@ -18,7 +18,6 @@ export interface Variant {
     clinvarVariationID: string;
     alleleFrequency: number;
     cadd: number;
-    revel: number;
     
     // Population fields (some used for ClinVar, some for Custom)
     alleleCount?: number;
@@ -77,6 +76,7 @@ export interface Variant {
     freq_DD?: number;
     sift?: number;
     polyphen?: number;
+    REVEL?: string | number;
 }
 
 export interface CustomVariant {
@@ -127,6 +127,7 @@ export interface CustomVariant {
     "Allele Number Amish": string;
     "Allele Count South Asian": string;
     "Allele Number South Asian": string;
+    REVEL: string;
 }
 
 export interface TabItem {

@@ -134,6 +134,7 @@ export default function FunctionalTab({
   const config = {
     responsive: true,
     displayModeBar: true, // Allow zoom controls
+  displaylogo: false,
   };
 
   return (
@@ -142,14 +143,88 @@ export default function FunctionalTab({
         <>
           {/* New Plot Section */}
           <div className="bg-white dark:bg-gray-800/70 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
-            <div className="w-full">
-              <Plot
-                data={plotData}
-                layout={layout}
-                config={config}
-                useResizeHandler={true}
-                style={{ width: "100%", height: "600px" }}
-              />
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-full">
+                <Plot
+                  data={plotData}
+                  layout={layout}
+                  config={config}
+                  useResizeHandler={true}
+                  style={{ width: "100%", height: "600px" }}
+                />
+              </div>
+              {/* Controls Hint Tooltip */}
+              <div className="relative group ml-4">
+                <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-help transition-all hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-400 dark:hover:border-primary-600">
+                  <svg className="w-4 h-4 text-gray-600 dark:text-gray-300 group-hover:text-primary-600 dark:group-hover:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                {/* Tooltip Content */}
+                <div className="absolute right-0 top-8 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="p-4">
+                    <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200 mb-3 uppercase tracking-wider">Plot Controls</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                          <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Extend Axis</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400">Hover over axis end and drag</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                          <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Shrink Axis</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400">Hover over axis start and drag</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                          <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Scroll Axis</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400">Hover over axis middle and drag</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                          <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9h6v6H9z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Box Zoom</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400">Click and drag to draw box</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                          <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Reset View</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400">Double-click to reset zoom</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-wrap justify-center gap-6 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">

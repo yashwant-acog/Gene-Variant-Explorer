@@ -104,30 +104,30 @@ export default function PopulationTab({
         variant.alleleFrequency !== undefined) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white dark:bg-scientific-panel p-6 rounded-xl border border-gray-100 dark:border-scientific-border shadow-sm flex flex-col justify-center">
-            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">
+            <h3 className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
               Global Allele Count
             </h3>
-            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 font-mono">
+            <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 font-mono">
               {variant.alleleCount !== undefined
                 ? variant.alleleCount.toLocaleString()
                 : "N/A"}
             </p>
           </div>
           <div className="bg-white dark:bg-scientific-panel p-6 rounded-xl border border-gray-100 dark:border-scientific-border shadow-sm flex flex-col justify-center">
-            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">
+            <h3 className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
               Global Allele Number
             </h3>
-            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 font-mono">
+            <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 font-mono">
               {variant.alleleNumber !== undefined
                 ? variant.alleleNumber.toLocaleString()
                 : "N/A"}
             </p>
           </div>
           <div className="bg-white dark:bg-scientific-panel p-6 rounded-xl border border-gray-100 dark:border-scientific-border shadow-sm flex flex-col justify-center">
-            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">
+            <h3 className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
               Global Allele Frequency
             </h3>
-            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 font-mono">
+            <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 font-mono">
               {variant.alleleFrequency !== undefined
                 ? variant.alleleFrequency >= 0.01
                   ? variant.alleleFrequency.toFixed(4)
@@ -151,7 +151,7 @@ export default function PopulationTab({
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <svg
-                className="w-5 h-5 text-indigo-500"
+                className="w-6 h-6 text-scientific-accent dark:text-blue-100"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -160,7 +160,7 @@ export default function PopulationTab({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                 />
               </svg>
               Population Metrics

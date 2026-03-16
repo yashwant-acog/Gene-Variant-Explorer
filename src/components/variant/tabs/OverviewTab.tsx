@@ -51,12 +51,12 @@ export default function OverviewTab({ variant }: OverviewTabProps) {
     {
       text: "Likely Benign −6 to −9",
       pos: 28,
-      colorClass: "bg-emerald-400 text-emerald-900",
+      colorClass: "bg-emerald-400 text-emerald-900 text-white",
     },
     {
       text: "VUS −5 to +5",
       pos: 50,
-      colorClass: "bg-amber-400 text-amber-900",
+      colorClass: "bg-amber-400 text-amber-900 text-white",
     },
     {
       text: "Likely Pathogenic 6–9",
@@ -69,39 +69,41 @@ export default function OverviewTab({ variant }: OverviewTabProps) {
   return (
     <div className="space-y-8">
       {/* Info cards – unchanged */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
             Position / Alleles
           </h3>
-          <p className="text-lg font-semibold font-mono text-sm text-gray-900 dark:text-gray-100">
+          <p
+            className={`text-xl font-mono font-semibold ${variant.cadd >= 20 ? "text-orange-500 dark:text-orange-400" : "text-gray-900 dark:text-gray-100"}`}
+          >
             {variant.position.toLocaleString()} ({variant.reference} →{" "}
             {variant.alternate})
           </p>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
             Genomic ID
           </h3>
-          <p className="text-lg font-semibold font-mono text-sm text-gray-900 dark:text-gray-100">
+          <p
+            className={`text-xl font-mono font-semibold`}
+          >
             {variant.Genomic_ID}
           </p>
         </div>
-        {variant.Mutation_type && (
-          <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Mutation Type
-            </h3>
-            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {variant.Mutation_type}
-            </p>
-          </div>
-        )}
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+            Mutation Type
+          </h3>
+          <p className="text-xl font-mono font-semibold text-gray-900 dark:text-gray-100">
+            {variant.Mutation_type}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
             Score Point
           </h3>
-          <p className="text-lg font-semibold font-mono text-sm text-gray-900 dark:text-gray-100">
+          <p className="text-xl font-mono font-semibold text-gray-900 dark:text-gray-100">
             {variant.Points}
           </p>
         </div>

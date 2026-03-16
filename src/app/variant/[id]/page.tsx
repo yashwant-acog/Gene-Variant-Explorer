@@ -45,7 +45,6 @@ export default function VariantPage({ params }: Props) {
       const parsed = parseFloat(val);
       return isNaN(parsed) ? 0 : parsed;
     };
-    console.log("HERE ===== ", dummyCustomVariants[0]);
     variant = {
       id: cDNA,
       gene: "FGFR3",
@@ -70,7 +69,6 @@ export default function VariantPage({ params }: Props) {
       clinvarVariationID: "",
       alleleFrequency: parseSci(customVariant["Allele Frequency"]),
       cadd: Math.abs(parseSci(customVariant.Effect_height)),
-      revel: parseSci(customVariant.C_REVEL),
       alleleCount: parseSci(customVariant["Allele Count"]),
       alleleNumber: parseSci(customVariant["Allele Number"]),
 
@@ -139,6 +137,7 @@ export default function VariantPage({ params }: Props) {
       Mutation_type: customVariant.Mutation_type,
       Points: customVariant?.Points,
       C_REVEL: customVariant?.C_REVEL,
+      REVEL: customVariant?.REVEL,
       condition: customVariant?.condition,
       Genomic_ID: customVariant?.Genomic_ID,
       freq_background: parseSci(customVariant.freq_background),
@@ -169,13 +168,11 @@ export default function VariantPage({ params }: Props) {
       clinvarVariationID: "",
       alleleFrequency: 0,
       cadd: 0,
-      revel: 0,
+      REVEL: 0,
       alleleCount: 0,
       sourceType: "clinvar",
     };
   }
-
-  console.log("Final varinat data = ", variant);
 
   // Calculate classification based on points
   const getClassificationByPoints = (pointsStr?: string) => {
@@ -239,7 +236,7 @@ export default function VariantPage({ params }: Props) {
     },
     {
       x: variant.cadd,
-      y: variant.revel,
+      y: variant.REVEL,
       label: variant.gnomAD_ID,
       color: "#ef4444",
       size: 12,

@@ -84,23 +84,41 @@ export default function GeneDashboard() {
   const [visibleClinVarColumns, setVisibleClinVarColumns] = useState<string[]>(
     CLINVAR_COLUMNS.map((col) => col.key)
   );
-  const [visibleCustomColumns, setVisibleCustomColumns] = useState<string[]>(
-    ["cDNA_change", "Genomic_ID", "Protein_change", "Mutation_type"]
-  );
+  const [visibleCustomColumns, setVisibleCustomColumns] = useState<string[]>([
+    "cDNA_change",
+    "Genomic_ID",
+    "Protein_change",
+    "Mutation_type",
+    "clinvar",
+    "gnomad",
+  ]);
 
   // Initialize filters from URL ONCE on mount using lazy initialization
   const [filters, setFilters] = useState<FilterState>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
       return {
-        classifications: searchParams.get("classifications")?.split(",").filter(Boolean) || [],
-        vepAnnotations: searchParams.get("vepAnnotations")?.split(",").filter(Boolean) || [],
-        mutationTypes: searchParams.get("mutationTypes")?.split(",").filter(Boolean) || [],
-        afMin: searchParams.get("afMin") ? Number(searchParams.get("afMin")) : "",
-        afMax: searchParams.get("afMax") ? Number(searchParams.get("afMax")) : "",
-        caddMin: searchParams.get("caddMin") ? Number(searchParams.get("caddMin")) : "",
-        revelMin: searchParams.get("revelMin") ? Number(searchParams.get("revelMin")) : "",
-        revelMax: searchParams.get("revelMax") ? Number(searchParams.get("revelMax")) : "",
+        classifications:
+          searchParams.get("classifications")?.split(",").filter(Boolean) || [],
+        vepAnnotations:
+          searchParams.get("vepAnnotations")?.split(",").filter(Boolean) || [],
+        mutationTypes:
+          searchParams.get("mutationTypes")?.split(",").filter(Boolean) || [],
+        afMin: searchParams.get("afMin")
+          ? Number(searchParams.get("afMin"))
+          : "",
+        afMax: searchParams.get("afMax")
+          ? Number(searchParams.get("afMax"))
+          : "",
+        caddMin: searchParams.get("caddMin")
+          ? Number(searchParams.get("caddMin"))
+          : "",
+        revelMin: searchParams.get("revelMin")
+          ? Number(searchParams.get("revelMin"))
+          : "",
+        revelMax: searchParams.get("revelMax")
+          ? Number(searchParams.get("revelMax"))
+          : "",
       };
     }
     return {
@@ -128,10 +146,13 @@ export default function GeneDashboard() {
 
     // Build URL params from current filters
     const params = new URLSearchParams();
-    
-    if (filters.classifications.length > 0) params.set("classifications", filters.classifications.join(","));
-    if (filters.vepAnnotations.length > 0) params.set("vepAnnotations", filters.vepAnnotations.join(","));
-    if (filters.mutationTypes.length > 0) params.set("mutationTypes", filters.mutationTypes.join(","));
+
+    if (filters.classifications.length > 0)
+      params.set("classifications", filters.classifications.join(","));
+    if (filters.vepAnnotations.length > 0)
+      params.set("vepAnnotations", filters.vepAnnotations.join(","));
+    if (filters.mutationTypes.length > 0)
+      params.set("mutationTypes", filters.mutationTypes.join(","));
     if (filters.afMin) params.set("afMin", String(filters.afMin));
     if (filters.afMax) params.set("afMax", String(filters.afMax));
     if (filters.caddMin) params.set("caddMin", String(filters.caddMin));
@@ -189,7 +210,7 @@ export default function GeneDashboard() {
             clinvarVariationID: "",
             alleleFrequency: parseFloat(cv["Allele Frequency"]) || 0,
             cadd: Math.abs(parseFloat(cv.Effect_height) || 0),
-            revel: parseFloat(cv.C_REVEL) || 0,
+            REVEL: parseFloat(cv.REVEL) || 0,
             Mutation_type: cv.Mutation_type,
             C_REVEL: cv.C_REVEL,
             Points: cv.Points,
@@ -273,9 +294,13 @@ export default function GeneDashboard() {
     if (filters.caddMin !== "")
       result = result.filter((v) => v.cadd >= Number(filters.caddMin));
     if (filters.revelMin !== "")
-      result = result.filter((v) => v.revel >= Number(filters.revelMin));
+      result = result.filter(
+        (v) => Number(v.REVEL) >= Number(filters.revelMin)
+      );
     if (filters.revelMax !== "")
-      result = result.filter((v) => v.revel <= Number(filters.revelMax));
+      result = result.filter(
+        (v) => Number(v.REVEL) <= Number(filters.revelMax)
+      );
 
     // 6. Sorting
     result = [...result].sort((a, b) => {
@@ -287,7 +312,7 @@ export default function GeneDashboard() {
         case "cadd-desc":
           return b.cadd - a.cadd;
         case "revel-desc":
-          return b.revel - a.revel;
+          return Number(b.REVEL) - Number(a.REVEL);
         case "points-desc":
           return parseFloat(b.Points || "0") - parseFloat(a.Points || "0");
         case "points-asc":
@@ -369,24 +394,48 @@ export default function GeneDashboard() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-scientific-border text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="p-1 cursor-pointer ring-primary-500 ring-2 rounded-md hover:bg-gray-100 dark:hover:bg-scientific-border text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
                 aria-label="Toggle Filters"
                 title="Toggle Filters"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                {isSidebarOpen ? (
+                  <svg
+                    className="w-6 h-6 text-gray-800 dark:text-white"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="m15 19-7-7 7-7"
+                    />
+                  </svg>
+                ) : (
+                  <>
+                  <svg
+                  className="w-6 h-6 text-gray-800 dark:text-white"
+                  aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
                 >
                   <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h7"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-width="2"
+                    d="M18.796 4H5.204a1 1 0 0 0-.753 1.659l5.302 6.058a1 1 0 0 1 .247.659v4.874a.5.5 0 0 0 .2.4l3 2.25a.5.5 0 0 0 .8-.4v-7.124a1 1 0 0 1 .247-.659l5.302-6.059c.566-.646.106-1.658-.753-1.658Z"
                   />
                 </svg>
+                  </>
+                )}
               </button>
               <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 hidden sm:block">
                 {symbol?.toUpperCase()} Variants Directory
@@ -436,9 +485,7 @@ export default function GeneDashboard() {
                   >
                     <path d="M4 8H20V5H4V8ZM14 19V10H10V19H14ZM16 19H20V10H16V19ZM8 19V10H4V19H8ZM3 3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3Z"></path>
                   </svg>
-                  <span className="ml-1">
-                    Table View
-                  </span>
+                  <span className="ml-1">Table</span>
                 </button>
                 <button
                   onClick={() => setMainView("plots")}
@@ -458,9 +505,7 @@ export default function GeneDashboard() {
                   >
                     <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
                   </svg>
-                  <span className="ml-1">
-                    Plots View
-                  </span>
+                  <span className="ml-1">Plots</span>
                 </button>
               </div>
             </div>

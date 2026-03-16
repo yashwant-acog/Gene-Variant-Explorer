@@ -213,11 +213,6 @@ export default function VariantTable({
                           <span className="text-gray-400 w-10 text-right mr-1">
                             RVL:
                           </span>
-                          <span
-                            className={`font-mono font-medium ${variant.revel >= 0.5 ? "text-red-500 dark:text-red-400" : "text-gray-700 dark:text-gray-300"}`}
-                          >
-                            {variant.revel.toFixed(2)}
-                          </span>
                         </div>
                       </div>
                     </td>

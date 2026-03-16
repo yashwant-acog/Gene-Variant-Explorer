@@ -6,12 +6,14 @@ export const CUSTOM_COLUMNS = [
   { key: "cDNA_change", label: "cDNA Change", group: "Identity" },
   { key: "Genomic_ID", label: "Genomic ID", group: "Identity" },
   { key: "Protein_change", label: "Protein Change", group: "Identity" },
-  { key: "gnomAD", label: "gnomAD", group: "Identity" },
 
+  { key: "REVEL", label: "REVEL", group: "Predictive" },
   { key: "C_REVEL", label: "C_REVEL", group: "Predictive" },
   { key: "Points", label: "Points", group: "Predictive" },
-
   { key: "Mutation_type", label: "Mutation", group: "Functional" },
+  { key: "clinvar", label: "ClinVar", group: "Public Sources" },
+  { key: "gnomad", label: "gnomAD", group: "Public Sources" },
+
   { key: "Functional", label: "Functional", group: "Functional" },
   { key: "Pvalue_functional", label: "P-value", group: "Functional" },
   { key: "FDR_functional", label: "FDR", group: "Functional" },
@@ -86,7 +88,7 @@ export default function CustomVariantTable({
             </tr>
 
             {/* Column Headers */}
-            <tr className="bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border text-xs font-semibold text-gray-700 dark:text-gray-200">
+            <tr className="bg- dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border text-xs font-semibold text-gray-700 dark:text-gray-200">
               {columns.map((col, idx) => (
                 <th
                   key={idx}
@@ -124,9 +126,7 @@ export default function CustomVariantTable({
                   if (col.key === "cDNA_change") {
                     renderedValue = (
                       <Link
-                        href={`/variant/${encodeURIComponent(
-                          v.cDNA_change
-                        )}`}
+                        href={`/variant/${encodeURIComponent(v.cDNA_change)}`}
                         className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
                       >
                         {value}
@@ -169,12 +169,64 @@ export default function CustomVariantTable({
                     );
                   }
 
+                  //REVEL scores
+                  if (col.key === "REVEL") {
+                    renderedValue = value ? (
+                      <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-[10px] whitespace-nowrap dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
+                        {value}
+                      </span>
+                    ) : null;
+                  }
+
                   if (col.key === "condition") {
                     renderedValue = value ? (
                       <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-[10px] whitespace-nowrap dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
                         {value}
                       </span>
                     ) : null;
+                  }
+
+                  if (col.key === "clinvar") {
+                    renderedValue = (
+                      <Link
+                        href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${v.cDNA_change}&term="${v.cDNA_change}"%5BVARNAME%5D`}
+                        className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                        target="_blank"
+                      >
+                        <div className="h-4 w-4 ml-1">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+                          </svg>
+                        </div>
+                      </Link>
+                    );
+                  }
+
+                  if (col.key === "gnomad") {
+                    renderedValue = (
+                      <Link
+                        href={`https://gnomad.broadinstitute.org/variant/${v.Genomic_ID?.replaceAll(
+                          ":",
+                          "-"
+                        )}?dataset=gnomad_r4`}
+                        className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                        target="_blank"
+                      >
+                        <div className="h-4 w-4 ml-1">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+                          </svg>
+                        </div>
+                      </Link>
+                    );
                   }
 
                   return (
