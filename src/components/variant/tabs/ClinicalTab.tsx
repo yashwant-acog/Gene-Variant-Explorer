@@ -42,12 +42,12 @@ export default function ClinicalTab({ variant }: ClinicalTabProps) {
         </h3>
 
         <Link
-          href={`https://gnomad.broadinstitute.org/variant/${variant.Genomic_ID?.replaceAll(":", "-")}?dataset=gnomad_r4`}
+          href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${variant.id}&term="${variant.id}"%5BVARNAME%5D`}
+          className="cursor-pointer px-3 py-1 inline-flex text-xs font-bold tracking-wider rounded-full border"
           target="_blank"
-          className="mb-8 cursor-pointer flex inline-flex bg-primary-50 text-blue-700 dark:bg-primary-900/20 dark:text-primary-300 px-3 py-1.5 rounded-3xl text-sm font-medium border border-blue-400 dark:border-primary-800/30"
         >
-          <span className="">gnoMAD</span>
-          <div className="h-4 w-4 ml-1">
+          <span className="cursor-pointer">ClinVar</span>
+          <div className="h-4 w-4 ml-1 cursor-pointer">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
