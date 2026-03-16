@@ -292,58 +292,58 @@ export default function AnnotationTab({
                 gridcolor: "rgba(107, 114, 128, 0.1)",
                 zerolinecolor: "rgba(107, 114, 128, 0.2)",
                 tickfont: { color: "#6b7280" },
-                shapes: [
-                  // Threshold lines
-                  {
-                    type: "line",
-                    x0: -0.5,
-                    y0: 0.9,
-                    x1: plotPoints.length + 0.5,
-                    y1: 0.9,
-                    line: {
-                      color: "#dc2626",
-                      width: 2,
-                      dash: "dot",
-                    },
-                  },
-                  {
-                    type: "line",
-                    x0: -0.5,
-                    y0: 0.6,
-                    x1: plotPoints.length + 0.5,
-                    y1: 0.6,
-                    line: {
-                      color: "#f97316",
-                      width: 2,
-                      dash: "dot",
-                    },
-                  },
-                  {
-                    type: "line",
-                    x0: -0.5,
-                    y0: 0.4,
-                    x1: plotPoints.length + 0.5,
-                    y1: 0.4,
-                    line: {
-                      color: "#eab308",
-                      width: 2,
-                      dash: "dot",
-                    },
-                  },
-                  {
-                    type: "line",
-                    x0: -0.5,
-                    y0: 0.2,
-                    x1: plotPoints.length + 0.5,
-                    y1: 0.2,
-                    line: {
-                      color: "#22c55e",
-                      width: 2,
-                      dash: "dot",
-                    },
-                  },
-                ],
               },
+              shapes: [
+                // Threshold lines
+                {
+                  type: "line",
+                  x0: -0.5,
+                  y0: 0.9,
+                  x1: plotPoints.length + 0.5,
+                  y1: 0.9,
+                  line: {
+                    color: "#dc2626",
+                    width: 2,
+                    dash: "dot",
+                  },
+                },
+                {
+                  type: "line",
+                  x0: -0.5,
+                  y0: 0.6,
+                  x1: plotPoints.length + 0.5,
+                  y1: 0.6,
+                  line: {
+                    color: "#f97316",
+                    width: 2,
+                    dash: "dot",
+                  },
+                },
+                {
+                  type: "line",
+                  x0: -0.5,
+                  y0: 0.4,
+                  x1: plotPoints.length + 0.5,
+                  y1: 0.4,
+                  line: {
+                    color: "#eab308",
+                    width: 2,
+                    dash: "dot",
+                  },
+                },
+                {
+                  type: "line",
+                  x0: -0.5,
+                  y0: 0.2,
+                  x1: plotPoints.length + 0.5,
+                  y1: 0.2,
+                  line: {
+                    color: "#22c55e",
+                    width: 2,
+                    dash: "dot",
+                  },
+                },
+              ],
             }}
             config={{ responsive: true, displayModeBar: false }}
             useResizeHandler={true}
