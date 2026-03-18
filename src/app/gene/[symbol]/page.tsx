@@ -390,182 +390,187 @@ export default function GeneDashboard() {
         {/* Main Content Area - Separate scroll */}
         <div className="flex-1 flex flex-col min-w-0 h-[calc(100vh-4rem)] relative bg-gray-50/50 dark:bg-scientific-bg/50">
           {/* Top Control Bar - Sticky within right section */}
-          <div className="shrink-0 bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border p-4 flex items-center justify-between gap-4 sticky top-0 z-20">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-1 cursor-pointer ring-primary-500 ring-2 rounded-md hover:bg-gray-100 dark:hover:bg-scientific-border text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
-                aria-label="Toggle Filters"
-                title="Toggle Filters"
-              >
-                {isSidebarOpen ? (
-                  <svg
-                    className="w-6 h-6 text-gray-800 dark:text-white"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="m15 19-7-7 7-7"
-                    />
-                  </svg>
-                ) : (
-                  <>
-                  <svg
-                  className="w-6 h-6 text-gray-800 dark:text-white"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-width="2"
-                    d="M18.796 4H5.204a1 1 0 0 0-.753 1.659l5.302 6.058a1 1 0 0 1 .247.659v4.874a.5.5 0 0 0 .2.4l3 2.25a.5.5 0 0 0 .8-.4v-7.124a1 1 0 0 1 .247-.659l5.302-6.059c.566-.646.106-1.658-.753-1.658Z"
-                  />
-                </svg>
-                  </>
-                )}
-              </button>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 hidden sm:block">
-                {symbol?.toUpperCase()} Variants Directory
-              </h1>
-            </div>
-
-            <div className="flex bg-gray-100 dark:bg-scientific-border p-1 rounded-lg">
-              <button
-                onClick={() => setViewMode("clinvar")}
-                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
-                  viewMode === "clinvar"
-                    ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
-                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                }`}
-              >
-                ClinVar
-              </button>
-              <button
-                onClick={() => setViewMode("custom")}
-                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
-                  viewMode === "custom"
-                    ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
-                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                }`}
-              >
-                Custom
-              </button>
-            </div>
-
-            <div className="flex justify-center flex-none mb-1 ml-6">
-              <div className="inline-flex">
+          <div className="shrink-0 bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border p-4 sticky top-0 z-20">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Left Section - Toggle & Title */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <button
-                  onClick={() => setMainView("table")}
-                  className={`
-                  whitespace-nowrap cursor-pointer flex py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 mx-1
-                  ${
-                    mainView === "table"
-                      ? "border-primary-500 text-primary-600 dark:text-scientific-accent dark:border-scientific-accent"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600"
-                  }
-                `}
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className="p-1 cursor-pointer ring-primary-500 ring-2 rounded-md hover:bg-gray-100 dark:hover:bg-scientific-border text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 shrink-0"
+                  aria-label="Toggle Filters"
+                  title="Toggle Filters"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M4 8H20V5H4V8ZM14 19V10H10V19H14ZM16 19H20V10H16V19ZM8 19V10H4V19H8ZM3 3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3Z"></path>
-                  </svg>
-                  <span className="ml-1">Table</span>
+                  {isSidebarOpen ? (
+                    <svg
+                      className="w-6 h-6 text-gray-800 dark:text-white"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="m15 19-7-7 7-7"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-6 h-6 text-gray-800 dark:text-white"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-width="2"
+                        d="M18.796 4H5.204a1 1 0 0 0-.753 1.659l5.302 6.058a1 1 0 0 1 .247.659v4.874a.5.5 0 0 0 .2.4l3 2.25a.5.5 0 0 0 .8-.4v-7.124a1 1 0 0 1 .247-.659l5.302-6.059c.566-.646.106-1.658-.753-1.658Z"
+                      />
+                    </svg>
+                  )}
                 </button>
-                <button
-                  onClick={() => setMainView("plots")}
-                  className={`
-                  whitespace-nowrap cursor-pointer flex py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 mx-1
-                  ${
-                    mainView === "plots"
-                      ? "border-primary-500 text-primary-600 dark:text-scientific-accent dark:border-scientific-accent"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600"
-                  }
-                `}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
-                  </svg>
-                  <span className="ml-1">Plots</span>
-                </button>
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                  {symbol?.toUpperCase()} Variants Directory
+                </h1>
               </div>
-            </div>
 
-            <div className="flex items-center gap-3 flex-1 w-20 justify-end">
-              {/* Search Input */}
-              <div className="relative w-60">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg
-                    className="h-4 w-4 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+              {/* Middle Section - View Mode & Table/Plots Toggle */}
+              <div className="flex items-center gap-4 order-3 md:order-2 w-full md:w-auto mt-3 md:mt-0 md:flex-none">
+                <div className="flex bg-gray-100 dark:bg-scientific-border p-1 rounded-lg shrink-0">
+                  <button
+                    onClick={() => setViewMode("clinvar")}
+                    className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
+                      viewMode === "clinvar"
+                        ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                    }`}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
+                    ClinVar
+                  </button>
+                  <button
+                    onClick={() => setViewMode("custom")}
+                    className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
+                      viewMode === "custom"
+                        ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                    }`}
+                  >
+                    Custom
+                  </button>
                 </div>
-                <input
-                  type="text"
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
-                  placeholder="Search cDNA or Protein..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+
+                <div className="inline-flex shrink-0">
+                  <button
+                    onClick={() => setMainView("table")}
+                    className={`
+                    whitespace-nowrap cursor-pointer flex items-center py-2 px-3 border-b-2 font-medium text-sm transition-all duration-200 mx-1 rounded-t-md
+                    ${
+                      mainView === "table"
+                        ? "border-primary-500 text-primary-600 dark:text-scientific-accent dark:border-scientific-accent bg-primary-50 dark:bg-primary-900/20"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600"
+                    }
+                  `}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="w-4 h-4"
+                    >
+                      <path d="M4 8H20V5H4V8ZM14 19V10H10V19H14ZM16 19H20V10H16V19ZM8 19V10H4V19H8ZM3 3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3Z"></path>
+                    </svg>
+                    <span className="ml-1 hidden sm:inline">Table</span>
+                  </button>
+                  <button
+                    onClick={() => setMainView("plots")}
+                    className={`
+                    whitespace-nowrap cursor-pointer flex items-center py-2 px-3 border-b-2 font-medium text-sm transition-all duration-200 mx-1 rounded-t-md
+                    ${
+                      mainView === "plots"
+                        ? "border-primary-500 text-primary-600 dark:text-scientific-accent dark:border-scientific-accent bg-primary-50 dark:bg-primary-900/20"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600"
+                    }
+                  `}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="w-4 h-4"
+                    >
+                      <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
+                    </svg>
+                    <span className="ml-1 hidden sm:inline">Plots</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Sort Dropdown */}
-              <div className="relative shrink-0">
-                <select
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value as SortOption)}
-                  className="block w-20 pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer transition-colors"
-                >
-                  <option value="id-asc">Sort: ID (A-Z)</option>
-                  <option value="points-desc">Sort: Highest Points</option>
-                  <option value="points-asc">Sort: Lowest Points</option>
-                  <option value="af-desc">Sort: Highest AF</option>
-                  <option value="af-asc">Sort: Lowest AF</option>
-                  <option value="cadd-desc">Sort: Highest CADD</option>
-                  <option value="revel-desc">Sort: Highest REVEL</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              {/* Right Section - Search & Sort */}
+              <div className="flex items-center gap-3 order-2 md:order-3 w-full md:w-auto mt-3 md:mt-0 md:flex-none">
+                {/* Search Input */}
+                <div className="relative w-full md:w-60 flex-1 md:flex-none">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className="h-4 w-4 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                    placeholder="Search cDNA or Protein..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
+                {/* Sort Dropdown */}
+                <div className="relative shrink-0">
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value as SortOption)}
+                    className="block w-20 pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer transition-colors"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                    <option value="id-asc">Sort: ID (A-Z)</option>
+                    <option value="points-desc">Sort: Highest Points</option>
+                    <option value="points-asc">Sort: Lowest Points</option>
+                    <option value="af-desc">Sort: Highest AF</option>
+                    <option value="af-asc">Sort: Lowest AF</option>
+                    <option value="cadd-desc">Sort: Highest CADD</option>
+                    <option value="revel-desc">Sort: Highest REVEL</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
