@@ -1,7 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Variant } from "@/lib/types";
 import dynamic from "next/dynamic";
 import { dummyCustomVariants } from "@/lib/dummyData";
+import { config } from "node:process";
 
 // Dynamically import Plotly for client-side rendering in Next.js
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
@@ -34,8 +35,19 @@ export default function AnnotationTab({
     return { label: "Benign", color: "green" }; // Green
   };
 
+  // Helper to extract protein position from protein change (e.g., "M1K" -> 1)
+  const extractProteinPosition = (proteinChange: string): number => {
+    if (!proteinChange || proteinChange === "N/A") return NaN;
+    // Match the numeric part in the protein change (e.g., M1K -> 1, A256T -> 256)
+    const match = proteinChange.match(/[A-Z](\d+)/);
+    if (match && match[1]) {
+      return parseInt(match[1], 10);
+    }
+    return NaN;
+  };
+
   // Prepare distribution data from all custom variants for this gene
-  const { plotPoints, currentIndex } = useMemo(() => {
+  const { plotPoints, currentIndex, maxXValue } = useMemo(() => {
     // Filter variants for the current gene (FGFR3)
     const geneVariants = dummyCustomVariants.filter(
       (v) => variant.gene === "FGFR3", // Currently focusing on FGFR3
@@ -44,10 +56,11 @@ export default function AnnotationTab({
     const points = geneVariants
       .map((v) => {
         const protein = v.Protein_change || "N/A";
+        const position = extractProteinPosition(protein);
         const revelScore = parseNum(v.REVEL);
         const classification = getRevelClassification(revelScore);
         return {
-          x: protein,
+          x: position,
           y: revelScore,
           label: v.Protein_change || v.cDNA_change,
           id: v.cDNA_change,
@@ -56,20 +69,145 @@ export default function AnnotationTab({
           color: classification.color,
         };
       })
-      .filter((p) => !isNaN(p.y));
+      .filter((p) => !isNaN(p.y) && !isNaN(p.x));
 
     const currentVariantIndex = points.findIndex(
       (p) => p.id === variant.id || p.id === variant.hgvsConsequence,
     );
 
+    // Find the maximum protein position for dynamic x-axis scaling
+    const maxPosition = points.length > 0 ? Math.max(...points.map(p => p.x)) : 100;
+    // Add 5% padding to the max value for better visualization
+    const maxX = Math.ceil(maxPosition * 1.05);
+
     return { 
       plotPoints: points, 
-      currentIndex: currentVariantIndex
+      currentIndex: currentVariantIndex,
+      maxXValue: maxX
     };
   }, [variant]);
 
-  const annotations =
-    currentIndex !== -1 && plotPoints[currentIndex]
+  // State for minimap visibility
+  const [showMinimap, setShowMinimap] = useState(true);
+
+  // State for minimap zoom rectangle
+  const [zoomRect, setZoomRect] = useState<{
+    x0: number | null;
+    x1: number | null;
+    y0: number | null;
+    y1: number | null;
+  }>({ x0: null, x1: null, y0: null, y1: null });
+
+  // State to track view range for off-screen indicators
+  const [viewRange, setViewRange] = useState<{
+    xMin: number | null;
+    xMax: number | null;
+    yMin: number | null;
+    yMax: number | null;
+  }>({ xMin: null, xMax: null, yMin: null, yMax: null });
+
+  // Calculate counts of points outside the current view
+  const getOffScreenCounts = () => {
+    const { xMin, xMax, yMin, yMax } = viewRange;
+    if (xMin === null || xMax === null || yMin === null || yMax === null) {
+      return { above: 0, below: 0, left: 0, right: 0 };
+    }
+
+    const counts = { above: 0, below: 0, left: 0, right: 0 };
+    
+    plotPoints.forEach((p) => {
+      if (p.y > yMax) counts.above++;
+      else if (p.y < yMin) counts.below++;
+      
+      if (p.x < xMin) counts.left++;
+      else if (p.x > xMax) counts.right++;
+    });
+
+    return counts;
+  };
+
+  const offScreenCounts = getOffScreenCounts();
+
+  // Create annotations for off-screen points
+  const getOffScreenAnnotations = () => {
+    if (!viewRange.xMin || !viewRange.xMax || !viewRange.yMin || !viewRange.yMax) {
+      return [];
+    }
+
+    const annotations: any[] = [];
+    const xMid = (viewRange.xMin + viewRange.xMax) / 2;
+    const yMid = (viewRange.yMin + viewRange.yMax) / 2;
+
+    // Above indicator
+    if (offScreenCounts.above > 0) {
+      annotations.push({
+        x: xMid,
+        y: viewRange.yMax,
+        xref: "x" as const,
+        yref: "y" as const,
+        text: `▲ ${offScreenCounts.above} more`,
+        showarrow: false,
+        font: { size: 11 },
+        yshift: -5,
+        bgcolor: "rgba(241, 245, 249, 0.9)",
+        borderpad: 4,
+      });
+    }
+
+    // Below indicator
+    if (offScreenCounts.below > 0) {
+      annotations.push({
+        x: xMid,
+        y: viewRange.yMin,
+        xref: "x" as const,
+        yref: "y" as const,
+        text: `▼ ${offScreenCounts.below} more`,
+        showarrow: false,
+        font: { size: 11 },
+        yshift: 5,
+        bgcolor: "rgba(241, 245, 249, 0.9)",
+        borderpad: 4,
+      });
+    }
+
+    // Left indicator
+    if (offScreenCounts.left > 0) {
+      annotations.push({
+        x: viewRange.xMin,
+        y: yMid,
+        xref: "x" as const,
+        yref: "y" as const,
+        text: `${offScreenCounts.left} more ◀`,
+        showarrow: false,
+        font: { size: 11 },
+        xshift: 5,
+        bgcolor: "rgba(241, 245, 249, 0.9)",
+        borderpad: 4,
+      });
+    }
+
+    // Right indicator
+    if (offScreenCounts.right > 0) {
+      annotations.push({
+        x: viewRange.xMax,
+        y: yMid,
+        xref: "x" as const,
+        yref: "y" as const,
+        text: `▶ ${offScreenCounts.right} more`,
+        showarrow: false,
+        font: { size: 11 },
+        xshift: -5,
+        bgcolor: "rgba(241, 245, 249, 0.9)",
+        borderpad: 4,
+      });
+    }
+
+    return annotations;
+  };
+
+  const annotations = [
+    // Current variant annotation
+    ...(currentIndex !== -1 && plotPoints[currentIndex]
       ? [
           {
             x: plotPoints[currentIndex].x,
@@ -88,7 +226,16 @@ export default function AnnotationTab({
             borderpad: 4,
           },
         ]
-      : [];
+      : []),
+    // Off-screen point indicators
+    ...getOffScreenAnnotations(),
+  ];
+
+  const config = {
+    responsive: true,
+    displayModeBar: true, // Allow zoom controls
+    displaylogo: false,
+  };
 
   return (
     <div className="space-y-6">
@@ -146,12 +293,24 @@ export default function AnnotationTab({
       </div>
 
       <div className="bg-white dark:bg-scientific-panel rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-100 dark:border-scientific-border bg-gray-50/50 dark:bg-black/20 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 tracking-widest">
+        <div className="p-4 dark:bg-black/20 flex items-center justify-between">
+          <h3 className="font-semibold text-md">
             REVEL Score Distribution by Protein Change
           </h3>
-          {/* Controls Hint Tooltip */}
-          <div className="relative group ml-4">
+          <div className="flex items-center">
+            {/* Minimap Toggle Button */}
+            <button
+              onClick={() => setShowMinimap(!showMinimap)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                showMinimap
+                  ? "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 border-primary-300 dark:border-primary-700"
+                  : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border-gray-300 dark:border-gray-600"
+              }`}
+            >
+              {showMinimap ? "✓ Minimap On" : "○ Minimap Off"}
+            </button>
+            {/* Controls Hint Tooltip */}
+            <div className="relative group ml-4">
             <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-help transition-all hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-400 dark:hover:border-primary-600">
               <svg className="w-4 h-4 text-gray-600 dark:text-gray-300 group-hover:text-primary-600 dark:group-hover:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -222,8 +381,9 @@ export default function AnnotationTab({
               </div>
             </div>
           </div>
+          </div>
         </div>
-        
+        <div className="bg-black h-[0.5px] mx-4"></div>
         <div className="p-4">
           <Plot
             data={[
@@ -232,10 +392,10 @@ export default function AnnotationTab({
                 y: plotPoints.map((p) => p.y),
                 mode: "markers" as const,
                 type: "scatter" as const,
-                name: "Variants",
+                name: "main",
                 text: plotPoints.map(
                   (p) =>
-                    `${p.label}<br>Protein: ${p.x}<br>cDNA change: ${p.id}<br>REVEL: ${p.y.toFixed(3)}<br>Classification: ${p.classification}`,
+                    `${p.label}<br>Protein Position: ${p.x}<br>cDNA change: ${p.id}<br>REVEL: ${p.y.toFixed(3)}<br>Classification: ${p.classification}`,
                 ),
                 hoverinfo: "text" as const,
                 marker: {
@@ -261,25 +421,43 @@ export default function AnnotationTab({
                   ),
                 },
               },
+              // Minimap data - smaller overview (only shown when showMinimap is true)
+              ...(showMinimap ? [{
+                x: plotPoints.map((p) => p.x),
+                y: plotPoints.map((p) => p.y),
+                mode: "markers" as const,
+                type: "scatter" as const,
+                name: "minimap",
+                xaxis: "x2" as any,
+                yaxis: "y2" as any,
+                showlegend: false,
+                marker: {
+                  size: 3,
+                  color: plotPoints.map((p) => p.color),
+                  opacity: 0.4,
+                },
+                hoverinfo: "skip" as any,
+              }] : []),
             ]}
             layout={{
               autosize: true,
               height: 500,
-              margin: { t: 20, r: 20, l: 100, b: 100 },
+              margin: { t: 10, r: 20, l: 100, b: 100 },
               paper_bgcolor: "transparent",
               plot_bgcolor: "transparent",
               hovermode: "closest",
               annotations: annotations,
               xaxis: {
                 title: {
-                  text: "Protein Change",
+                  text: "Protein Position",
                   font: { size: 12, color: "#9ca3af" },
                 },
-                tickangle: -45,
+                tickangle: 0,
                 tickfont: { 
                   color: "#6b7280",
                   size: 11,
                 },
+                range: [0, maxXValue], // Dynamic range based on max protein position
                 gridcolor: "rgba(107, 114, 128, 0.1)",
                 zerolinecolor: "rgba(107, 114, 128, 0.2)",
               },
@@ -293,13 +471,57 @@ export default function AnnotationTab({
                 zerolinecolor: "rgba(107, 114, 128, 0.2)",
                 tickfont: { color: "#6b7280" },
               },
+              // Minimap axes configuration (only shown when showMinimap is true)
+              ...(showMinimap ? {
+                xaxis2: {
+                  domain: [0.82, 0.98],
+                  anchor: "y2" as any,
+                  range: [0, maxXValue],
+                  showgrid: false,
+                  showticklabels: false,
+                  zeroline: false,
+                  showline: true,
+                  linewidth: 1,
+                  linecolor: "#94a3b8",
+                },
+                yaxis2: {
+                  domain: [0.82, 0.98],
+                  anchor: "x2" as any,
+                  range: [0, 1],
+                  showgrid: false,
+                  showticklabels: false,
+                  zeroline: false,
+                  showline: true,
+                  linewidth: 1,
+                  linecolor: "#94a3b8",
+                },
+              } : {}),
               shapes: [
+                // Zoom rectangle for minimap
+                ...(zoomRect.x0 !== null && zoomRect.x1 !== null && zoomRect.y0 !== null && zoomRect.y1 !== null
+                  ? [
+                      {
+                        type: "rect" as any,
+                        xref: "x2" as any,
+                        yref: "y2" as any,
+                        x0: zoomRect.x0,
+                        y0: zoomRect.y0,
+                        x1: zoomRect.x1,
+                        y1: zoomRect.y1,
+                        line: {
+                          color: "#4ade80",
+                          width: 1,
+                        },
+                        fillcolor: "rgba(74, 222, 128, 0.2)",
+                      },
+                    ]
+                  : []),
                 // Threshold lines
                 {
-                  type: "line",
-                  x0: -0.5,
+                  type: "line" as any,
+                  x0: 0,
                   y0: 0.9,
-                  x1: plotPoints.length + 0.5,
+                  x1: maxXValue,
                   y1: 0.9,
                   line: {
                     color: "#dc2626",
@@ -308,10 +530,10 @@ export default function AnnotationTab({
                   },
                 },
                 {
-                  type: "line",
-                  x0: -0.5,
+                  type: "line" as any,
+                  x0: 0,
                   y0: 0.6,
-                  x1: plotPoints.length + 0.5,
+                  x1: maxXValue,
                   y1: 0.6,
                   line: {
                     color: "#f97316",
@@ -320,10 +542,10 @@ export default function AnnotationTab({
                   },
                 },
                 {
-                  type: "line",
-                  x0: -0.5,
+                  type: "line" as any,
+                  x0: 0,
                   y0: 0.4,
-                  x1: plotPoints.length + 0.5,
+                  x1: maxXValue,
                   y1: 0.4,
                   line: {
                     color: "#eab308",
@@ -332,10 +554,10 @@ export default function AnnotationTab({
                   },
                 },
                 {
-                  type: "line",
-                  x0: -0.5,
+                  type: "line" as any,
+                  x0: 0,
                   y0: 0.2,
-                  x1: plotPoints.length + 0.5,
+                  x1: maxXValue,
                   y1: 0.2,
                   line: {
                     color: "#22c55e",
@@ -345,9 +567,31 @@ export default function AnnotationTab({
                 },
               ],
             }}
-            config={{ responsive: true, displayModeBar: false }}
+            config={config}
             useResizeHandler={true}
             style={{ width: "100%", height: "500px" }}
+            onRelayout={(eventData: any) => {
+              if (eventData["xaxis.range[0]"] !== undefined) {
+                // Update zoom rectangle for minimap
+                setZoomRect({
+                  x0: eventData["xaxis.range[0]"],
+                  x1: eventData["xaxis.range[1]"],
+                  y0: eventData["yaxis.range[0]"],
+                  y1: eventData["yaxis.range[1]"],
+                });
+                // Update view range for off-screen indicators
+                setViewRange({
+                  xMin: eventData["xaxis.range[0]"],
+                  xMax: eventData["xaxis.range[1]"],
+                  yMin: eventData["yaxis.range[0]"],
+                  yMax: eventData["yaxis.range[1]"],
+                });
+              }
+            }}
+            onDoubleClick={() => {
+              setZoomRect({ x0: null, x1: null, y0: null, y1: null });
+              setViewRange({ xMin: null, xMax: null, yMin: null, yMax: null });
+            }}
           />
           <div className="flex flex-wrap justify-center gap-6 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2">
@@ -415,12 +659,6 @@ export default function AnnotationTab({
               Dotted lines represent REVEL score thresholds: Pathogenic (&gt;0.9), Likely Pathogenic (0.6-0.9), Uncertain (0.4-0.6), Likely Benign (0.2-0.4), Benign (&lt;0.2)
             </p>
           </div>
-          <p className="text-[9px] text-center text-gray-300 dark:text-gray-600 mt-2 flex items-center justify-center gap-1">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-            </svg>
-            Click & drag to zoom • Scroll to pan • Double-click to reset
-          </p>
         </div>
       </div>
     </div>

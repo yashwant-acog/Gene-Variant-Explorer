@@ -407,6 +407,65 @@ export default function VariantPage({ params }: Props) {
   const activeTabContent =
     tabs.find((t) => t.id === activeTabId)?.content || tabs[0].content;
 
+  
+async function fetchMatchingCdnaVariants(genomicId, cdnaToMatch) {
+  try {
+    const [chr, pos, ref, alt] = genomicId.split(":");
+
+    // 1️⃣ Search
+    const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&term=${chr}[Chromosome]+AND+${pos}[Base Position]+AND+${ref}>${alt}&retmode=json`;
+
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+
+    const ids = searchData?.esearchresult?.idlist || [];
+    if (!ids.length) {
+      console.log("No ClinVar IDs found.");
+      return [];
+    }
+
+    // 2️⃣ Fetch all IDs
+    const summaryUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=clinvar&id=${ids.join(",")}&retmode=json`;
+
+    const summaryRes = await fetch(summaryUrl);
+    const summaryData = await summaryRes.json();
+
+    const matchedResults = [];
+
+    // 3️⃣ Iterate through all records
+    ids.forEach((uid) => {
+      const record = summaryData.result?.[uid];
+      if (!record?.variation_set) return;
+
+      record.variation_set.forEach((variation) => {
+        if (variation.cdna_change === cdnaToMatch) {
+          matchedResults.push({
+            variantID: record?.accession, // VCV ID
+            germlineClassification:
+              record?.germline_classification?.description || "",
+            conditions:
+              record?.germline_classification?.trait_set?.map(
+                (t) => t.trait_name
+              ) || [],
+          });
+        }
+      });
+    });
+
+    console.log("Matched Variants:", matchedResults);
+
+    return matchedResults;
+
+  } catch (error) {
+    console.error("Error fetching ClinVar data:", error);
+    return [];
+  }
+}
+
+fetchMatchingCdnaVariants(
+  "4:1804392:G:A",
+  "c.1138G>A"
+);
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-scientific-bg">
       {/* Rich Header Section - Sticky */}
@@ -461,7 +520,11 @@ export default function VariantPage({ params }: Props) {
                   </svg>
                 </div>
               </Link>
+              {/* <div>
+                {variant.proteinConsequence}
+              </div> */}
             </div>
+            
 
             {/* Right Side: Tabs */}
             <div className="w-full md:w-auto">

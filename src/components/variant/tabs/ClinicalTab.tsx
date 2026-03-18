@@ -43,7 +43,7 @@ export default function ClinicalTab({ variant }: ClinicalTabProps) {
 
         <Link
           href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${variant.id}&term="${variant.id}"%5BVARNAME%5D`}
-          className="cursor-pointer px-3 py-1 inline-flex text-xs font-bold tracking-wider rounded-full border"
+          className="cursor-pointer px-3 py-1 my-2 inline-flex text-xs font-bold tracking-wider rounded-full border"
           target="_blank"
         >
           <span className="cursor-pointer">ClinVar</span>

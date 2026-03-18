@@ -34,7 +34,7 @@ export default function OverviewTab({ variant }: OverviewTabProps) {
 
   // Expanded scale to better handle values ≤ -10
   const MIN = -20;
-  const MAX = 30;
+  const MAX = 20;
   const rangeWidth = MAX - MIN;
 
   let positionPercent = ((pts - MIN) / rangeWidth) * 100;
@@ -72,17 +72,6 @@ export default function OverviewTab({ variant }: OverviewTabProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
-            Position / Alleles
-          </h3>
-          <p
-            className={`text-xl font-mono font-semibold ${variant.cadd >= 20 ? "text-orange-500 dark:text-orange-400" : "text-gray-900 dark:text-gray-100"}`}
-          >
-            {variant.position.toLocaleString()} ({variant.reference} →{" "}
-            {variant.alternate})
-          </p>
-        </div>
-        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
-          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
             Genomic ID
           </h3>
           <p
@@ -101,7 +90,15 @@ export default function OverviewTab({ variant }: OverviewTabProps) {
         </div>
         <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
-            Score Point
+            Protein Change
+          </h3>
+          <p className="text-xl font-mono font-semibold text-gray-900 dark:text-gray-100">
+            {variant.proteinConsequence}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+            ACMG score
           </h3>
           <p className="text-xl font-mono font-semibold text-gray-900 dark:text-gray-100">
             {variant.Points}
@@ -164,18 +161,12 @@ export default function OverviewTab({ variant }: OverviewTabProps) {
             })}
           </div>
 
-          {/* Classification + range labels BELOW the ticks – slightly rotated downward */}
-          <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-10">
-            Current variant score: <strong>{displayPoints}</strong> →{" "}
-            {classification}
-          </div>
-
-          <div className="relative h-16 mt-8">
+          <div className="relative h-16 mt-4">
             {rangeLabels.map((label, i) => (
               <div
                 key={i}
                 className={`absolute text-xs font-medium px-3 py-1.5 rounded-lg ${label.colorClass} shadow-sm origin-top whitespace-nowrap`}
-                style={{ left: `${label.pos}%`, top: "0" }}
+                style={{ left: `${label.pos - 5}%`, top: "0" }}
               >
                 {label.text}
               </div>
