@@ -148,6 +148,16 @@ export default function VariantPage({ params }: Props) {
       Pvalue_ratio: parseSci(customVariant.Pvalue_ratio),
       Functional: parseSci(customVariant.Functional),
       Pvalue_functional: parseSci(customVariant.Pvalue_functional),
+      VEST4_score: customVariant.VEST4_score,
+      MutPred_score: customVariant.MutPred_score,
+      BayesDel_addAF_score: customVariant.BayesDel_addAF_score,
+      ACMG: customVariant.ACMG,
+      New_Functional: customVariant.New_Functional,
+      New_Functional_Pvalue: customVariant.New_Functional_Pvalue,
+      Meta_height: customVariant.Meta_height,
+      Meta_height_SE: customVariant.Meta_height_SE,
+      Meta_ratio: customVariant.Meta_ratio,
+      Meta_ratio_SE: customVariant.Meta_ratio_SE,
     };
   } else {
     variant = {
@@ -408,7 +418,7 @@ export default function VariantPage({ params }: Props) {
     tabs.find((t) => t.id === activeTabId)?.content || tabs[0].content;
 
   
-async function fetchMatchingCdnaVariants(genomicId, cdnaToMatch) {
+async function fetchMatchingCdnaVariants(genomicId: string, cdnaToMatch: string) {
   try {
     const [chr, pos, ref, alt] = genomicId.split(":");
 
@@ -430,14 +440,15 @@ async function fetchMatchingCdnaVariants(genomicId, cdnaToMatch) {
     const summaryRes = await fetch(summaryUrl);
     const summaryData = await summaryRes.json();
 
-    const matchedResults = [];
+    const matchedResults: any = [];
 
     // 3️⃣ Iterate through all records
-    ids.forEach((uid) => {
+    ids.forEach((uid: any) => {
       const record = summaryData.result?.[uid];
+      console.log("ClinVar Record:", record)
       if (!record?.variation_set) return;
 
-      record.variation_set.forEach((variation) => {
+      record.variation_set.forEach((variation: any) => {
         if (variation.cdna_change === cdnaToMatch) {
           matchedResults.push({
             variantID: record?.accession, // VCV ID
@@ -445,7 +456,7 @@ async function fetchMatchingCdnaVariants(genomicId, cdnaToMatch) {
               record?.germline_classification?.description || "",
             conditions:
               record?.germline_classification?.trait_set?.map(
-                (t) => t.trait_name
+                (t: any) => t.trait_name
               ) || [],
           });
         }

@@ -77,6 +77,18 @@ export interface Variant {
     sift?: number;
     polyphen?: number;
     REVEL?: string | number;
+
+    // New columns added
+    VEST4_score?: string;
+    MutPred_score?: string;
+    BayesDel_addAF_score?: string;
+    ACMG?: string;
+    New_Functional?: string;
+    New_Functional_Pvalue?: string;
+    Meta_height?: string;
+    Meta_height_SE?: string;
+    Meta_ratio?: string;
+    Meta_ratio_SE?: string;
 }
 
 export interface CustomVariant {
@@ -128,6 +140,18 @@ export interface CustomVariant {
     "Allele Count South Asian": string;
     "Allele Number South Asian": string;
     REVEL: string;
+    
+    // New columns added
+    VEST4_score: string;
+    MutPred_score: string;
+    BayesDel_addAF_score: string;
+    ACMG: string;
+    New_Functional: string;
+    New_Functional_Pvalue: string;
+    Meta_height: string;
+    Meta_height_SE: string;
+    Meta_ratio: string;
+    Meta_ratio_SE: string;
 }
 
 export interface TabItem {

@@ -240,6 +240,16 @@ export default function GeneDashboard() {
             cDNA_change: cv.cDNA_change,
             sourceType: "custom" as const,
             conditions: cv.condition ? [cv.condition] : [],
+            VEST4_score: cv.VEST4_score,
+            MutPred_score: cv.MutPred_score,
+            BayesDel_addAF_score: cv.BayesDel_addAF_score,
+            ACMG: cv.ACMG,
+            New_Functional: cv.New_Functional,
+            New_Functional_Pvalue: cv.New_Functional_Pvalue,
+            Meta_height: cv.Meta_height,
+            Meta_height_SE: cv.Meta_height_SE,
+            Meta_ratio: cv.Meta_ratio,
+            Meta_ratio_SE: cv.Meta_ratio_SE
           };
         });
     }

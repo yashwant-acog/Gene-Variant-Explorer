@@ -242,17 +242,17 @@ export default function AnnotationTab({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
-            CADD PHRED
+            VEST4 Score
           </h3>
           <p
             className={`text-xl font-mono font-bold ${variant.cadd >= 20 ? "text-orange-500 dark:text-orange-400" : "text-gray-900 dark:text-gray-100"}`}
           >
-            {variant.cadd.toFixed(1)}
+            {variant.VEST4_score ? parseFloat(variant.VEST4_score).toFixed(2) : "N/A"}
           </p>
         </div>
         <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
-            REVEL
+            REVEL score
           </h3>
           <p
             className={`text-xl font-mono font-bold ${Number(variant.REVEL) >= 0.5 ? "text-red-500 dark:text-red-400" : "text-blue-500 dark:text-blue-100"}`}
@@ -262,18 +262,18 @@ export default function AnnotationTab({
         </div>
         <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
-            SIFT
+            MutPred Score
           </h3>
           <p className="text-xl font-mono font-bold text-gray-900 dark:text-gray-100">
-            {variant?.sift?.toFixed(2) || "N/A"}
+            {variant?.MutPred_score ? parseFloat(variant.MutPred_score).toFixed(2) : "N/A"}
           </p>
         </div>
         <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
-            PolyPhen
+            BayesDel Score
           </h3>
           <p className="text-xl font-mono font-bold text-gray-900 dark:text-gray-100">
-            {variant.polyphen ? variant.polyphen.toFixed(2) : "N/A"}
+            {variant.BayesDel_addAF_score ? parseFloat(variant.BayesDel_addAF_score).toFixed(2) : "N/A"}
           </p>
         </div>
       </div>
