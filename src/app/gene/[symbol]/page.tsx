@@ -74,7 +74,7 @@ export default function GeneDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [mainView, setMainView] = useState<"table" | "plots">("table");
   const [chartView, setChartView] = useState<"scatter" | "bar">("scatter");
-  const [searchQuery, setSearchQuery] = useState("");
+  // searchQuery is initialized from URL below
   const [sortOption, setSortOption] = useState<SortOption>("id-asc");
   const [viewMode, setViewMode] = useState<"clinvar" | "custom">("custom");
   const [clinvarVariants, setClinvarVariants] = useState<Variant[]>([]);
@@ -93,7 +93,7 @@ export default function GeneDashboard() {
     "gnomad",
   ]);
 
-  // Initialize filters from URL ONCE on mount using lazy initialization
+  // Initialize filters and search query from URL ONCE on mount using lazy initialization
   const [filters, setFilters] = useState<FilterState>(() => {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
@@ -133,10 +133,19 @@ export default function GeneDashboard() {
     };
   });
 
+  // Initialize searchQuery from URL ONCE on mount
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      return searchParams.get("search") || "";
+    }
+    return "";
+  });
+
   // Track if we've initialized to avoid syncing on mount
   const hasInitializedRef = useRef(false);
 
-  // Sync filters to URL only when user changes them (not on initial mount)
+  // Sync filters and search to URL only when user changes them (not on initial mount)
   useEffect(() => {
     // Skip on initial mount
     if (!hasInitializedRef.current) {
@@ -144,7 +153,7 @@ export default function GeneDashboard() {
       return;
     }
 
-    // Build URL params from current filters
+    // Build URL params from current filters and search
     const params = new URLSearchParams();
 
     if (filters.classifications.length > 0)
@@ -158,10 +167,11 @@ export default function GeneDashboard() {
     if (filters.caddMin) params.set("caddMin", String(filters.caddMin));
     if (filters.revelMin) params.set("revelMin", String(filters.revelMin));
     if (filters.revelMax) params.set("revelMax", String(filters.revelMax));
+    if (searchQuery) params.set("search", searchQuery);
 
     // Update URL without triggering re-render
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [filters, router]);
+  }, [filters, searchQuery, router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -249,20 +259,37 @@ export default function GeneDashboard() {
             Meta_height: cv.Meta_height,
             Meta_height_SE: cv.Meta_height_SE,
             Meta_ratio: cv.Meta_ratio,
-            Meta_ratio_SE: cv.Meta_ratio_SE
+            Meta_ratio_SE: cv.Meta_ratio_SE,
           };
         });
     }
 
-    // 2. Search Query
+    // 2. Search Query - Support cDNA, Protein, and Genomic ID
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (v) =>
+      result = result.filter((v) => {
+        // For custom variants, check additional fields
+        if (v.sourceType === "custom") {
+          const customV = v as any;
+          return (
+            v.gnomAD_ID.toLowerCase().includes(q) ||
+            (v.id && v.id.toLowerCase().includes(q)) ||
+            v.proteinConsequence.toLowerCase().includes(q) ||
+            (customV.cDNA_change &&
+              customV.cDNA_change.toLowerCase().includes(q)) ||
+            (customV.Genomic_ID &&
+              customV.Genomic_ID.toLowerCase().includes(q)) ||
+            (customV.Protein_change &&
+              customV.Protein_change.toLowerCase().includes(q))
+          );
+        }
+        // For ClinVar variants
+        return (
           v.gnomAD_ID.toLowerCase().includes(q) ||
           (v.id && v.id.toLowerCase().includes(q)) ||
           v.proteinConsequence.toLowerCase().includes(q)
-      );
+        );
+      });
     }
 
     // 3. Classifications
@@ -456,24 +483,24 @@ export default function GeneDashboard() {
               <div className="flex items-center gap-4 order-3 md:order-2 w-full md:w-auto mt-3 md:mt-0 md:flex-none">
                 <div className="flex bg-gray-100 dark:bg-scientific-border p-1 rounded-lg shrink-0">
                   <button
-                    onClick={() => setViewMode("clinvar")}
-                    className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
-                      viewMode === "clinvar"
-                        ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
-                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                    }`}
-                  >
-                    ClinVar
-                  </button>
-                  <button
                     onClick={() => setViewMode("custom")}
-                    className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
+                    className={`cursor-pointer px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
                       viewMode === "custom"
                         ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
                         : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
                     }`}
                   >
                     Custom
+                  </button>
+                  <button
+                    onClick={() => setViewMode("clinvar")}
+                    className={`cursor-pointer px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
+                      viewMode === "clinvar"
+                        ? "bg-white dark:bg-scientific-panel shadow-sm text-primary-600 dark:text-scientific-accent"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                    }`}
+                  >
+                    ClinVar
                   </button>
                 </div>
 
@@ -555,7 +582,9 @@ export default function GeneDashboard() {
                 <div className="relative shrink-0">
                   <select
                     value={sortOption}
-                    onChange={(e) => setSortOption(e.target.value as SortOption)}
+                    onChange={(e) =>
+                      setSortOption(e.target.value as SortOption)
+                    }
                     className="block w-20 pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer transition-colors"
                   >
                     <option value="id-asc">Sort: ID (A-Z)</option>

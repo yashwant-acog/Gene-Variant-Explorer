@@ -220,13 +220,14 @@ export default function VariantTable({
                 }
 
                 if (col.key === "action") {
+                  const genomicIdEncoded = variant.Genomic_ID ? encodeURIComponent(variant.Genomic_ID) : '';
                   return (
                     <td
                       key={col.key}
                       className={`${cellClassName} text-center`}
                     >
                       <Link
-                        href={`/variant/${variant.rsIDs[0] || variant.id}`}
+                        href={`/variant/${encodeURIComponent(variant.rsIDs[0] || variant.id)}?genomicId=${genomicIdEncoded}`}
                         className="inline-flex items-center justify-center p-1.5 rounded-md text-primary-600 dark:text-scientific-accent hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                         title="View Details"
                       >

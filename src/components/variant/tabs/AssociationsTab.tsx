@@ -7,37 +7,66 @@ interface AssociationsTabProps {
 }
 
 export default function AssociationsTab({ variant }: AssociationsTabProps) {
-  const forestData = useMemo(() => {
-    const currentX = variant.Effect_height;
-    const currentP = variant.Pvalue_height;
+  // Prepare combined forest plot data for both Meta_height and Meta_ratio
+  const combinedData = useMemo(() => {
+    const studies: ForestPlotData[] = [];
+
+    // Process Meta_height
+    const metaHeight = variant.Meta_height;
+    const metaHeightSE = variant.Meta_height_SE;
 
     if (
-      currentX !== undefined &&
-      currentP !== undefined &&
-      !isNaN(currentX) &&
-      !isNaN(currentP)
+      metaHeight !== undefined &&
+      metaHeightSE !== undefined &&
+      metaHeight !== "NA" &&
+      metaHeightSE !== "NA" &&
+      !isNaN(parseFloat(metaHeight)) &&
+      !isNaN(parseFloat(metaHeightSE))
     ) {
-      const ciWidth = Math.abs(currentX * 0.1) + 0.01;
-      return [
-        {
-          name: `P-val: ${currentP.toExponential(2)}`,
-          oddsRatio: currentX,
-          ciLower: currentX - ciWidth,
-          ciUpper: currentX + ciWidth,
-          color: "#8b5cf6",
-        } as ForestPlotData,
-      ];
+      const height = parseFloat(metaHeight);
+      const se = parseFloat(metaHeightSE);
+      const ciLower = height - 1.96 * se;
+      const ciUpper = height + 1.96 * se;
+
+      studies.push({
+        name: `Meta Height`,
+        oddsRatio: height,
+        ciLower: ciLower,
+        ciUpper: ciUpper,
+        color: "#8b5cf6",
+      });
     }
 
-    return [];
+    // Process Meta_ratio
+    const metaRatio = variant.Meta_ratio;
+    const metaRatioSE = variant.Meta_ratio_SE;
+
+    if (
+      metaRatio !== undefined &&
+      metaRatioSE !== undefined &&
+      metaRatio !== "NA" &&
+      metaRatioSE !== "NA" &&
+      !isNaN(parseFloat(metaRatio)) &&
+      !isNaN(parseFloat(metaRatioSE))
+    ) {
+      const ratio = parseFloat(metaRatio);
+      const se = parseFloat(metaRatioSE);
+      const ciLower = ratio - 1.96 * se;
+      const ciUpper = ratio + 1.96 * se;
+
+      studies.push({
+        name: `Meta Ratio`,
+        oddsRatio: ratio,
+        ciLower: ciLower,
+        ciUpper: ciUpper,
+        color: "#3b82f6",
+      });
+    }
+
+    return studies;
   }, [variant]);
 
-  const hasData =
-    variant.Effect_height !== undefined &&
-    variant.Pvalue_height !== undefined &&
-    !isNaN(variant.Effect_height) &&
-    !isNaN(variant.Pvalue_height) &&
-    variant.Pvalue_height > 0;
+  const hasData = combinedData.length > 0;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -58,47 +87,51 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
                   d="M19 11l-7 7-7-7"
                 />
               </svg>
-              Height Association
+              Meta-Analysis Associations
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Distribution of effect size and significance across the gene for
-              Height.
+              Forest plots showing meta-analysis results for height and ratio associations.
             </p>
           </div>
         </div>
 
         {hasData ? (
           <>
-            <div className="grid grid-cols-1 gap-8">
+            {/* Combined Forest Plot */}
+            <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <ForestPlot
-                studies={forestData}
-                title="Height Association (Forest Plot)"
-                xAxisTitle="Association Effect Size (Beta)"
+                studies={combinedData}
+                title=""
+                xAxisTitle="Effect Size / Ratio"
                 xAxisType="linear"
                 nullEffect={0}
-                height={200}
+                height={220}
               />
             </div>
 
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-purple-50/50 dark:bg-purple-900/10 rounded-lg border border-purple-100/50 dark:border-purple-800/20">
-                <span className="block text-[10px] font-bold text-purple-500 dark:text-purple-400 uppercase tracking-widest mb-1">
-                  Y-Axis
-                </span>
-                <p className="text-xs text-purple-800 dark:text-purple-200 leading-relaxed">
-                  <strong>P-value</strong> for the effect. Displays the exact
-                  significance of this variant's association.
-                </p>
-              </div>
-              <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100/50 dark:border-blue-800/20">
-                <span className="block text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-1">
-                  X-Axis
-                </span>
-                <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
-                  <strong>Effect Size (Width)</strong> represents the magnitude
-                  and direction of the trait modification.
-                </p>
-              </div>
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {combinedData.some(d => d.name === "Meta Height") && (
+                <div className="p-4 bg-purple-50/50 dark:bg-purple-900/10 rounded-lg border border-purple-100/50 dark:border-purple-800/20">
+                  <span className="block text-[10px] font-bold text-purple-500 dark:text-purple-400 uppercase tracking-widest mb-1">
+                    Meta Height
+                  </span>
+                  <p className="text-xs text-purple-800 dark:text-purple-200 leading-relaxed">
+                    <strong>Effect:</strong> Beta coefficient with 95% CI (±1.96×SE). 
+                    Reference line at 0 (no effect).
+                  </p>
+                </div>
+              )}
+              {combinedData.some(d => d.name === "Meta Ratio") && (
+                <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100/50 dark:border-blue-800/20">
+                  <span className="block text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-1">
+                    Meta Ratio
+                  </span>
+                  <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+                    <strong>Ratio:</strong> Effect ratio with 95% CI (±1.96×SE). 
+                    Reference line at 0 (no effect).
+                  </p>
+                </div>
+              )}
             </div>
           </>
         ) : (
@@ -117,11 +150,10 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
               />
             </svg>
             <h4 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">
-              No Association Data
+              No Meta-Analysis Data
             </h4>
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
-              The selected variant does not have valid Effect Height or P-value
-              Height data to plot.
+              The selected variant does not have valid Meta_height or Meta_ratio data to plot.
             </p>
           </div>
         )}

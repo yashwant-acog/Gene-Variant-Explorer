@@ -1,12 +1,12 @@
 "use client";
 
-import React, { use, useMemo, useState } from "react";
+import React, { use, useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import TabLayout from "@/components/layout/TabLayout";
 import { dummyVariants, dummyCustomVariants } from "@/lib/dummyData";
 import { Variant } from "@/lib/types";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 
 import OverviewTab from "@/components/variant/tabs/OverviewTab";
@@ -18,7 +18,6 @@ import AssociationsTab from "@/components/variant/tabs/AssociationsTab";
 import TherapeuticsTab from "@/components/variant/tabs/TherapeuticsTab";
 import StructureTab from "@/components/variant/tabs/StructureTab";
 import LiteratureTab from "@/components/variant/tabs/LiteratureTab";
-import { useSearchParams } from "next/navigation";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -26,13 +25,58 @@ interface Props {
 
 export default function VariantPage({ params }: Props) {
   const resolvedParams = use(params);
+  const searchParams = useSearchParams();
   const cDNA = decodeURIComponent(resolvedParams.id);
+  const genomicIdFromParam = searchParams.get("genomicId") || "";
 
   const router = useRouter();
 
-  // Search in both datasets
-  const rawVariant = dummyVariants.find((v) => v.id === cDNA);
+  // State for ClinVar matched results
+  const [clinvarMatches, setClinvarMatches] = useState<any[]>([]);
+  const [isClinVarLoading, setIsClinVarLoading] = useState(true);
+
+  // Use genomic ID from params instead of finding from customVariant
   const customVariant = dummyCustomVariants.find((v) => v.cDNA_change === cDNA);
+
+  // Fetch ClinVar matches on mount
+  useEffect(() => {
+    async function fetchMatches() {
+      // Use genomic ID from URL params, fallback to customVariant if not provided
+      const genomicId = genomicIdFromParam || (customVariant?.Genomic_ID || "");
+      const cdnaToMatch = cDNA;
+
+      if (genomicId && cdnaToMatch) {
+        setIsClinVarLoading(true);
+        try {
+          // Call our Next.js API route instead of ClinVar directly
+          console.log("API called");
+          const response = await fetch(
+            `/api/clinvar/match?genomicId=${encodeURIComponent(
+              genomicId
+            )}&cdnaToMatch=${encodeURIComponent(cdnaToMatch)}`
+          );
+          if (!response.ok) {
+            throw new Error("Failed to fetch ClinVar data");
+          }
+          const matches = await response.json();
+          console.log("Matches found:", matches);
+          if (matches && matches.length > 0) {
+            setClinvarMatches(matches);
+          }
+        } catch (error) {
+          console.error("Error fetching ClinVar matches:", error);
+          setClinvarMatches([]);
+        } finally {
+          setIsClinVarLoading(false);
+        }
+      } else {
+        setIsClinVarLoading(false);
+      }
+    }
+
+    if (!cDNA) return;
+    fetchMatches();
+  }, [cDNA, genomicIdFromParam]);
 
   // Map to normalized shape for shared UI
   let variant: Variant;
@@ -360,12 +404,24 @@ export default function VariantPage({ params }: Props) {
     {
       id: "overview",
       label: "Overview",
-      content: <OverviewTab variant={variant} />,
+      content: (
+        <OverviewTab
+          variant={variant}
+          clinvarMatches={clinvarMatches}
+          isLoading={isClinVarLoading}
+        />
+      ),
     },
     {
       id: "clinical",
       label: "Clinical",
-      content: <ClinicalTab variant={variant} />,
+      content: (
+        <ClinicalTab
+          variant={variant}
+          clinvarMatches={clinvarMatches}
+          isLoading={isClinVarLoading}
+        />
+      ),
     },
     {
       id: "functional",
@@ -417,66 +473,6 @@ export default function VariantPage({ params }: Props) {
   const activeTabContent =
     tabs.find((t) => t.id === activeTabId)?.content || tabs[0].content;
 
-  
-async function fetchMatchingCdnaVariants(genomicId: string, cdnaToMatch: string) {
-  try {
-    const [chr, pos, ref, alt] = genomicId.split(":");
-
-    // 1️⃣ Search
-    const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&term=${chr}[Chromosome]+AND+${pos}[Base Position]+AND+${ref}>${alt}&retmode=json`;
-
-    const searchRes = await fetch(searchUrl);
-    const searchData = await searchRes.json();
-
-    const ids = searchData?.esearchresult?.idlist || [];
-    if (!ids.length) {
-      console.log("No ClinVar IDs found.");
-      return [];
-    }
-
-    // 2️⃣ Fetch all IDs
-    const summaryUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=clinvar&id=${ids.join(",")}&retmode=json`;
-
-    const summaryRes = await fetch(summaryUrl);
-    const summaryData = await summaryRes.json();
-
-    const matchedResults: any = [];
-
-    // 3️⃣ Iterate through all records
-    ids.forEach((uid: any) => {
-      const record = summaryData.result?.[uid];
-      console.log("ClinVar Record:", record)
-      if (!record?.variation_set) return;
-
-      record.variation_set.forEach((variation: any) => {
-        if (variation.cdna_change === cdnaToMatch) {
-          matchedResults.push({
-            variantID: record?.accession, // VCV ID
-            germlineClassification:
-              record?.germline_classification?.description || "",
-            conditions:
-              record?.germline_classification?.trait_set?.map(
-                (t: any) => t.trait_name
-              ) || [],
-          });
-        }
-      });
-    });
-
-    console.log("Matched Variants:", matchedResults);
-
-    return matchedResults;
-
-  } catch (error) {
-    console.error("Error fetching ClinVar data:", error);
-    return [];
-  }
-}
-
-fetchMatchingCdnaVariants(
-  "4:1804392:G:A",
-  "c.1138G>A"
-);
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-scientific-bg">
       {/* Rich Header Section - Sticky */}
@@ -535,7 +531,6 @@ fetchMatchingCdnaVariants(
                 {variant.proteinConsequence}
               </div> */}
             </div>
-            
 
             {/* Right Side: Tabs */}
             <div className="w-full md:w-auto">

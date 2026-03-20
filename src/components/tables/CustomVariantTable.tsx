@@ -134,9 +134,10 @@ export default function CustomVariantTable({
                   }
 
                   if (col.key === "cDNA_change") {
+                    const genomicIdEncoded = v.Genomic_ID ? encodeURIComponent(v.Genomic_ID) : '';
                     renderedValue = (
                       <Link
-                        href={`/variant/${encodeURIComponent(v.cDNA_change)}`}
+                        href={`/variant/${encodeURIComponent(v.cDNA_change)}?genomicId=${genomicIdEncoded}`}
                         className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
                       >
                         {value}
