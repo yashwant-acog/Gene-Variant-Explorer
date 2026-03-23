@@ -43,68 +43,71 @@ export default function ClinicalTab({
           </div>
         ) : (
           <>
-            {/* Display ClinVar matched conditions */}
-            {clinvarMatches && clinvarMatches.length > 0 && (
-              <div className="mb-6">
-                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
-                  ClinVar Database Matches
-                </h4>
-
-                {clinvarMatches.map((match, index) => (
-                  <div key={index} className="mb-4 last:mb-0">
-                    <Link
-                      href={`https://www.ncbi.nlm.nih.gov/clinvar/variation/${match.variationID}/`}
-                      target="_blank"
-                      className="flex inline-flex text-xs font-mono font-semibold text-primary-600 dark:text-primary-400 mb-2 bg-primary-50 dark:bg-primary-900/20 inline-block px-2 py-1 rounded"
-                    >
-                      Variation ID: {match.variationID}
-                      <div className="h-4 w-4 ml-1 cursor-pointer">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                        >
-                          <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
-                        </svg>
-                      </div>
-                    </Link>
-
-                    {match.conditions && match.conditions.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {match.conditions.map(
-                          (condition: string, condIndex: number) => (
-                            <span
-                              key={condIndex}
-                              className="bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300 px-3 py-1.5 rounded-lg text-sm font-medium border border-primary-100 dark:border-primary-800/30"
-                            >
-                              {condition}
-                            </span>
-                          )
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                        No conditions associated with this variation
-                      </p>
-                    )}
+            {/* Two-column layout for conditions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column - Additional Conditions */}
+              {variant?.condition != "NA" && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
+                    Additional Conditions
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300 px-3 py-1.5 rounded-lg text-sm font-medium border border-primary-100 dark:border-primary-800/30">
+                      {variant?.condition}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Original condition field */}
-            {variant?.condition != "NA" && (
-              <div className="mt-4">
-                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
-                  Additional Condition
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  <span className="bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300 px-3 py-1.5 rounded-lg text-sm font-medium border border-primary-100 dark:border-primary-800/30">
-                    {variant?.condition}
-                  </span>
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Right Column - ClinVar Database Matches */}
+              {clinvarMatches && clinvarMatches.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
+                    ClinVar Database Matches
+                  </h4>
+
+                  {clinvarMatches.map((match, index) => (
+                    <div key={index} className="mb-4 last:mb-0">
+                      <Link
+                        href={`https://www.ncbi.nlm.nih.gov/clinvar/variation/${match.variationID}/`}
+                        target="_blank"
+                        className="flex inline-flex text-xs font-mono font-semibold text-primary-600 dark:text-primary-400 mb-2 bg-primary-50 dark:bg-primary-900/20 inline-block px-2 py-1 rounded"
+                      >
+                        Variation ID: {match.variationID}
+                        <div className="h-4 w-4 ml-1 cursor-pointer">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+                          </svg>
+                        </div>
+                      </Link>
+
+                      {match.conditions && match.conditions.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {match.conditions.map(
+                            (condition: string, condIndex: number) => (
+                              <span
+                                key={condIndex}
+                                className="bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300 px-3 py-1.5 rounded-lg text-sm font-medium border border-primary-100 dark:border-primary-800/30"
+                              >
+                                {condition}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                          No conditions associated with this variation
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* No data state */}
             {(!clinvarMatches || clinvarMatches.length === 0) &&

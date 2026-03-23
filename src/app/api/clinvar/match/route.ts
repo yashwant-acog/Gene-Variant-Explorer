@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { title } from 'node:process';
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
       record.variation_set.forEach((variation: any) => {
         if (variation.cdna_change === cdnaToMatch) {
           matchedResults.push({
+            title: record?.title || '',
             variationID: uid, // Store the actual ClinVar ID used for API call
             accession: record?.accession || '',
             germlineClassification:

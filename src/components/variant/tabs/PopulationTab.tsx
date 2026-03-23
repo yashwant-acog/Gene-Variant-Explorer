@@ -97,37 +97,37 @@ export default function PopulationTab({
   }, [popDefs]);
 
   return (
-    <div className="space-y-8">
-      {/* Global Summary Stats */}
+    <div className="space-y-4">
+      {/* Compact Global Summary Stats */}
       {(variant.alleleCount !== undefined ||
         variant.alleleNumber !== undefined ||
         variant.alleleFrequency !== undefined) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-scientific-panel p-6 rounded-xl border border-gray-100 dark:border-scientific-border shadow-sm flex flex-col justify-center">
-            <h3 className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
-              Global Allele Count
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+              Allele Count
             </h3>
-            <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 font-mono">
+            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 font-mono">
               {variant.alleleCount !== undefined
                 ? variant.alleleCount.toLocaleString()
                 : "N/A"}
             </p>
           </div>
-          <div className="bg-white dark:bg-scientific-panel p-6 rounded-xl border border-gray-100 dark:border-scientific-border shadow-sm flex flex-col justify-center">
-            <h3 className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
-              Global Allele Number
+          <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+              Allele Number
             </h3>
-            <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 font-mono">
+            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 font-mono">
               {variant.alleleNumber !== undefined
                 ? variant.alleleNumber.toLocaleString()
                 : "N/A"}
             </p>
           </div>
-          <div className="bg-white dark:bg-scientific-panel p-6 rounded-xl border border-gray-100 dark:border-scientific-border shadow-sm flex flex-col justify-center">
-            <h3 className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mb-2">
-              Global Allele Frequency
+          <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+              Allele Frequency
             </h3>
-            <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 font-mono">
+            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 font-mono">
               {variant.alleleFrequency !== undefined
                 ? variant.alleleFrequency >= 0.01
                   ? variant.alleleFrequency.toFixed(4)
@@ -146,12 +146,12 @@ export default function PopulationTab({
         </div>
       )}
 
-      <div className="bg-white dark:bg-scientific-panel p-6 rounded-xl border border-gray-100 dark:border-scientific-border shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="bg-white dark:bg-scientific-panel p-4 rounded-lg border border-gray-100 dark:border-scientific-border shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <svg
-                className="w-6 h-6 text-scientific-accent dark:text-blue-100"
+                className="w-5 h-5 text-scientific-accent dark:text-blue-100"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -165,16 +165,15 @@ export default function PopulationTab({
               </svg>
               Population Metrics
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Comparing current variant against study cohort and visualizing
-              individual ancestry breakdown.
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Ancestry breakdown and frequency analysis
             </p>
           </div>
 
           <div className="flex p-1 bg-gray-100 dark:bg-black/20 rounded-lg w-fit">
             <button
               onClick={() => setChartView("bar")}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 chartView === "bar"
                   ? "bg-white dark:bg-white/10 text-primary-600 dark:text-white shadow-sm"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
@@ -184,7 +183,7 @@ export default function PopulationTab({
             </button>
             <button
               onClick={() => setChartView("distribution")}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                 chartView === "distribution"
                   ? "bg-white dark:bg-white/10 text-primary-600 dark:text-white shadow-sm"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
@@ -207,8 +206,8 @@ export default function PopulationTab({
             />
           ) : (
             <div className="pt-4 flex flex-col gap-2">
-              <div className="flex justify-end relative z-10 w-full mb-[-40px]">
-                <div className="flex p-1 bg-gray-100 dark:bg-black/20 rounded-lg w-fit mr-4">
+              <div className="flex justify-end relative z-10 w-full mb-[-45px]">
+                <div className="flex p-1 bg-gray-100 dark:bg-black/20 rounded-lg w-fit mr-4 mt-2">
                   <button
                     onClick={() => setBarChartViewMode("count")}
                     className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${

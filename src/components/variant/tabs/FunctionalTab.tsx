@@ -235,7 +235,7 @@ export default function FunctionalTab({
   const offScreenAnnotations = getOffScreenAnnotations();
 
   const layout = {
-    height: 600,
+    height: 500,
     xaxis: {
       title: { text: "Functional Score" },
       zeroline: true,
@@ -538,7 +538,7 @@ export default function FunctionalTab({
                     }}
                     config={config}
                     useResizeHandler={true}
-                    style={{ width: "100%", height: "600px" }}
+                    style={{ width: "100%", height: "500px" }}
                     onRelayout={(eventData: any) => {
                       // Update view range for off-screen indicators
                       if (eventData["xaxis.range[0]"] !== undefined) {

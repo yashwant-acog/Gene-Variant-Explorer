@@ -238,70 +238,71 @@ export default function AnnotationTab({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
-          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+    <div className="space-y-4">
+      {/* Compact score cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <h3 className="text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
             VEST4 Score
           </h3>
           <p
-            className={`text-xl font-mono font-bold ${variant.cadd >= 20 ? "text-orange-500 dark:text-orange-400" : "text-gray-900 dark:text-gray-100"}`}
+            className={`text-xs font-mono font-bold ${variant.cadd >= 20 ? "text-orange-500 dark:text-orange-400" : "text-gray-900 dark:text-gray-100"}`}
           >
             {variant.VEST4_score ? parseFloat(variant.VEST4_score).toFixed(2) : "N/A"}
           </p>
         </div>
-        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
-          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
-            REVEL score
+        <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <h3 className="text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+            REVEL Score
           </h3>
           <p
-            className={`text-xl font-mono font-bold ${Number(variant.REVEL) >= 0.5 ? "text-red-500 dark:text-red-400" : "text-blue-500 dark:text-blue-100"}`}
+            className={`text-xs font-mono font-bold ${Number(variant.REVEL) >= 0.5 ? "text-red-500 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}
           >
             {Number(variant.REVEL).toFixed(3)}
           </p>
         </div>
-        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
-          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+        <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <h3 className="text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
             MutPred Score
           </h3>
-          <p className="text-xl font-mono font-bold text-gray-900 dark:text-gray-100">
+          <p className="text-xs font-mono font-bold text-gray-900 dark:text-gray-100">
             {variant?.MutPred_score ? parseFloat(variant.MutPred_score).toFixed(2) : "N/A"}
           </p>
         </div>
-        <div className="bg-white dark:bg-scientific-panel p-5 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm flex flex-col items-center justify-center transition-all hover:border-primary-200 dark:hover:border-primary-800">
-          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+        <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <h3 className="text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
             BayesDel Score
           </h3>
-          <p className="text-xl font-mono font-bold text-gray-900 dark:text-gray-100">
+          <p className="text-xs font-mono font-bold text-gray-900 dark:text-gray-100">
             {variant.BayesDel_addAF_score ? parseFloat(variant.BayesDel_addAF_score).toFixed(2) : "N/A"}
           </p>
         </div>
       </div>
 
-      <div className="bg-gray-50 dark:bg-scientific-panel/50 p-6 rounded-lg border border-gray-100 dark:border-scientific-border/50">
-        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">
+      <div className="bg-gray-50 dark:bg-scientific-panel/50 p-4 rounded-lg border border-gray-100 dark:border-scientific-border/50">
+        <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
           VEP Functional Consequence
         </h3>
-        <div className="flex items-center gap-3">
-          <span className="bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 px-3 py-1 rounded-md text-sm font-mono border border-primary-200 dark:border-primary-800">
+        <div className="flex items-center gap-2">
+          <span className="bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 px-2.5 py-1 rounded-md text-xs font-mono border border-primary-200 dark:border-primary-800">
             {variant.vepAnnotation.replace(/_/g, " ")}
           </span>
-          <span className="text-sm text-gray-600 dark:text-gray-400 italic">
-            Determined via Ensembl Variant Effect Predictor
+          <span className="text-xs text-gray-600 dark:text-gray-400 italic">
+            Via Ensembl VEP
           </span>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-scientific-panel rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm overflow-hidden">
-        <div className="p-4 dark:bg-black/20 flex items-center justify-between">
-          <h3 className="font-semibold text-md">
+      <div className="bg-white dark:bg-scientific-panel rounded-lg border border-gray-200 dark:border-scientific-border shadow-sm overflow-hidden">
+        <div className="p-3 dark:bg-black/20 flex items-center justify-between">
+          <h3 className="font-semibold text-sm">
             REVEL Score Distribution by Protein Change
           </h3>
           <div className="flex items-center">
             {/* Minimap Toggle Button */}
             <button
               onClick={() => setShowMinimap(!showMinimap)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border ${
                 showMinimap
                   ? "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 border-primary-300 dark:border-primary-700"
                   : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border-gray-300 dark:border-gray-600"
@@ -310,71 +311,71 @@ export default function AnnotationTab({
               {showMinimap ? "✓ Minimap On" : "○ Minimap Off"}
             </button>
             {/* Controls Hint Tooltip */}
-            <div className="relative group ml-4">
-            <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-help transition-all hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-400 dark:hover:border-primary-600">
-              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300 group-hover:text-primary-600 dark:group-hover:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="relative group ml-2">
+            <div className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-help transition-all hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-400 dark:hover:border-primary-600">
+              <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300 group-hover:text-primary-600 dark:group-hover:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             {/* Tooltip Content */}
             <div className="absolute right-0 top-8 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-              <div className="p-4">
-                <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200 mb-3 uppercase tracking-wider">Plot Controls</h4>
-                <div className="space-y-3">
+              <div className="p-3">
+                <h4 className="text-[10px] font-bold text-gray-800 dark:text-gray-200 mb-2 uppercase tracking-wider">Plot Controls</h4>
+                <div className="space-y-2">
                   <div className="flex items-start gap-2">
-                    <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
-                      <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                      <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Extend Axis</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Hover over axis end and drag</p>
+                      <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300">Extend Axis</p>
+                      <p className="text-[9px] text-gray-500 dark:text-gray-400">Hover over axis end and drag</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
-                      <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                      <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Shrink Axis</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Hover over axis start and drag</p>
+                      <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300">Shrink Axis</p>
+                      <p className="text-[9px] text-gray-500 dark:text-gray-400">Hover over axis start and drag</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
-                      <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                      <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Scroll Axis</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Hover over axis middle and drag</p>
+                      <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300">Scroll Axis</p>
+                      <p className="text-[9px] text-gray-500 dark:text-gray-400">Hover over axis middle and drag</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
-                      <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                      <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9h6v6H9z" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Box Zoom</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Click and drag to draw box</p>
+                      <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300">Box Zoom</p>
+                      <p className="text-[9px] text-gray-500 dark:text-gray-400">Click and drag to draw box</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
-                      <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                      <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Reset View</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Double-click to reset zoom</p>
+                      <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300">Reset View</p>
+                      <p className="text-[9px] text-gray-500 dark:text-gray-400">Double-click to reset zoom</p>
                     </div>
                   </div>
                 </div>
@@ -383,8 +384,8 @@ export default function AnnotationTab({
           </div>
           </div>
         </div>
-        <div className="bg-black h-[0.5px] mx-4"></div>
-        <div className="p-4">
+        <div className="bg-black h-[0.5px] mx-3"></div>
+        <div className="p-3">
           <Plot
             data={[
               {
