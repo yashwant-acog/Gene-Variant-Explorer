@@ -137,11 +137,11 @@ export default function OverviewTab({
           {/* Two-column layout for classifications */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left Column - ACMG Classification */}
-            <div className="bg-white dark:bg-gray-800/70 px-5 py-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="bg-white dark:bg-gray-800/70 px-5 py-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
               <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
                 ACMG Classification (Points-based)
               </h4>
-              <div className="relative pt-14 pb-16">
+              <div className="relative pt-14 pb-16 mt-24">
                 {/* Floating badge – exactly at real points value */}
                 <div
                   className="absolute z-20"
@@ -169,7 +169,7 @@ export default function OverviewTab({
                 </div>
 
                 {/* Gradient track */}
-                <div className="h-4 rounded-full overflow-hidden bg-gradient-to-r from-emerald-500 via-emerald-400 via-amber-400 via-orange-500 to-red-600 mt-10" />
+                <div className="h-3 rounded-full overflow-hidden bg-gradient-to-r from-emerald-500 via-emerald-400 via-amber-400 via-orange-500 to-red-600 mt-8" />
 
                 {/* Ticks & numeric labels */}
                 <div className="relative h-10 mt-2">
@@ -193,7 +193,8 @@ export default function OverviewTab({
                 </div>
 
                 {/* Legend labels below the plot */}
-                <div className="mt-20">
+                <div className="mt-16">
+                  <div className="bg-gray-100 h-[1px] mb-3"></div>
                   {rangeLabels.map((label, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <div className={`w-3 h-3 rounded ${label.colorClass}`} />
@@ -376,15 +377,6 @@ function ClinVarClassificationPlot({ match }: ClinVarClassificationPlotProps) {
               </div>
             );
           })}
-        </div>
-
-        {/* Colored background segments */}
-        <div className="relative h-6 mt-2 flex">
-          <div className="flex-1 bg-emerald-500/20 border-r border-white/30" />
-          <div className="flex-1 bg-emerald-400/20 border-r border-white/30" />
-          <div className="flex-1 bg-amber-400/20 border-r border-white/30" />
-          <div className="flex-1 bg-orange-500/20 border-r border-white/30" />
-          <div className="flex-1 bg-red-600/20" />
         </div>
       </div>
 
