@@ -165,7 +165,7 @@ export default function CustomVariantTable({
 
                     renderedValue = classification ? (
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap border ml-[40%] ${getACMGColor(
+                        className={`px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap border ${getACMGColor(
                           classification
                         )}`}
                       >
