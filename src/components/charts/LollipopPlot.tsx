@@ -73,12 +73,12 @@ export default function LollipopPlot({
         const pos = extractPosition(v.proteinConsequence || v.hgvsConsequence);
         if (pos === null) return null;
 
-        const catIndex = getCategoryIndex(v.Points);
-        const color = getColorForClassification(v.Points);
-        const label = getLabelForPoints(v.Points);
+        const catIndex = getCategoryIndex(v.ACMG);
+        const color = getColorForClassification(v.ACMG);
+        const label = getLabelForPoints(v.ACMG);
         const isHighlighted =
           highlightedId &&
-          (v.id === highlightedId || v.gnomAD_ID === highlightedId);
+          (v.id === highlightedId || v.Genomic_ID === highlightedId);
 
         return {
           type: "scatter" as const,
@@ -86,7 +86,7 @@ export default function LollipopPlot({
           x: [pos],
           y: [catIndex],
           name: v.proteinConsequence || v.id,
-          text: `Variant: ${v.proteinConsequence || v.id}<br>Pos: ${pos}<br>Class: ${label}<br>Points: ${v.Points || "0"}`,
+          text: `Variant: ${v.proteinConsequence || v.id}<br>Pos: ${pos}<br>Class: ${label}<br>Points: ${v.ACMG || "0"}`,
           hoverinfo: "text" as const,
           showlegend: false,
           marker: {

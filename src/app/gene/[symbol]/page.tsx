@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import FilterPanel, { FilterState } from "@/components/filters/FilterPanel";
 import VariantTable from "@/components/tables/VariantTable";
 import CustomVariantTable from "@/components/tables/CustomVariantTable";
-import LollipopPlot from "@/components/charts/LollipopPlot";
 import ScatterPlot, { ScatterDataPoint } from "@/components/charts/ScatterPlot";
 import ACMGDistribution from "@/components/charts/ACMGDistribution";
 import { dummyCustomVariants } from "@/lib/dummyData";
@@ -16,14 +15,14 @@ import { CLINVAR_COLUMNS } from "@/components/tables/VariantTable";
 import { CUSTOM_COLUMNS } from "@/components/tables/CustomVariantTable";
 import Navbar from "@/components/layout/Navbar";
 
-type SortOption =
-  | "af-desc"
-  | "af-asc"
-  | "cadd-desc"
-  | "revel-desc"
-  | "id-asc"
-  | "points-desc"
-  | "points-asc";
+// type SortOption =
+//   | "af-desc"
+//   | "af-asc"
+//   | "cadd-desc"
+//   | "revel-desc"
+//   | "id-asc"
+//   | "points-desc"
+//   | "points-asc";
 
 // Helper to extract numeric position from proteinConsequence (e.g., "p.Gly380Arg" -> 380)
 const extractPosition = (proteinConsequence: string): number | null => {
@@ -65,6 +64,31 @@ const getLabelForPoints = (points?: string): string => {
   return "Benign";
 };
 
+// Helper functions for ClinVar classification
+const getCategoryIndexFromClinvar = (classification?: string): number => {
+  if (!classification) return 2; // Default to VUS
+
+  const cls = classification.toLowerCase();
+  if (cls.includes("pathogenic") && !cls.includes("likely")) return 4; // Pathogenic
+  if (cls.includes("likely pathogenic")) return 3; // Likely Pathogenic
+  if (cls.includes("vus") || cls.includes("uncertain")) return 2; // VUS/Uncertain significance
+  if (cls.includes("likely benign")) return 1; // Likely Benign
+  if (cls.includes("benign") && !cls.includes("likely")) return 0; // Benign
+  return 2; // Default to VUS for unknown classifications
+};
+
+const getColorForClinvarClassification = (classification?: string): string => {
+  if (!classification) return "#eab308"; // Default VUS color
+
+  const cls = classification.toLowerCase();
+  if (cls.includes("pathogenic") && !cls.includes("likely")) return "#ef4444"; // Pathogenic: Red
+  if (cls.includes("likely pathogenic")) return "#f97316"; // Likely Pathogenic: Orange
+  if (cls.includes("vus") || cls.includes("uncertain")) return "#eab308"; // VUS: Yellow
+  if (cls.includes("likely benign")) return "#34d399"; // Likely Benign: Light Emerald
+  if (cls.includes("benign") && !cls.includes("likely")) return "#10b981"; // Benign: Emerald
+  return "#eab308"; // Default VUS color
+};
+
 export default function GeneDashboard() {
   const params = useParams();
   const symbol = params?.symbol as string;
@@ -75,8 +99,7 @@ export default function GeneDashboard() {
   const [mainView, setMainView] = useState<"table" | "plots">("table");
   const [chartView, setChartView] = useState<"scatter" | "bar">("scatter");
   // searchQuery is initialized from URL below
-  const [sortOption, setSortOption] = useState<SortOption>("id-asc");
-  const [viewMode, setViewMode] = useState<"clinvar" | "custom">("custom");
+  // const [sortOption, setSortOption] = useState<SortOption>("id-asc");
   const [clinvarVariants, setClinvarVariants] = useState<Variant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,6 +112,7 @@ export default function GeneDashboard() {
     "Genomic_ID",
     "Protein_change",
     "Mutation_type",
+    "ACMG_classification",
     "clinvar",
     "gnomad",
   ]);
@@ -142,6 +166,15 @@ export default function GeneDashboard() {
     return "";
   });
 
+  // Initialize viewMode from URL ONCE on mount
+  const [viewMode, setViewMode] = useState<"clinvar" | "custom">(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      return (searchParams.get("viewMode") as "clinvar" | "custom") || "custom";
+    }
+    return "custom";
+  });
+
   // Track if we've initialized to avoid syncing on mount
   const hasInitializedRef = useRef(false);
 
@@ -153,7 +186,7 @@ export default function GeneDashboard() {
       return;
     }
 
-    // Build URL params from current filters and search
+    // Build URL params from current filters, search, and viewMode
     const params = new URLSearchParams();
 
     if (filters.classifications.length > 0)
@@ -168,10 +201,11 @@ export default function GeneDashboard() {
     if (filters.revelMin) params.set("revelMin", String(filters.revelMin));
     if (filters.revelMax) params.set("revelMax", String(filters.revelMax));
     if (searchQuery) params.set("search", searchQuery);
+    if (viewMode) params.set("viewMode", viewMode);
 
     // Update URL without triggering re-render
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [filters, searchQuery, router]);
+  }, [filters, searchQuery, viewMode, router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -206,7 +240,6 @@ export default function GeneDashboard() {
             id: cv.cDNA_change || "N/A",
             gene: symbol?.toUpperCase() || "FGFR3",
             disease: cv.condition || "Custom Analysis",
-            gnomAD_ID: cv.gnomAD || "",
             chromosome: genomicParts[0] || "N/A",
             position: parseInt(genomicParts[1]) || 0,
             rsIDs: [],
@@ -219,28 +252,11 @@ export default function GeneDashboard() {
             clinvarGermlineClassification: "Custom",
             clinvarVariationID: "",
             alleleFrequency: parseFloat(cv["Allele Frequency"]) || 0,
-            cadd: Math.abs(parseFloat(cv.Effect_height) || 0),
             REVEL: parseFloat(cv.REVEL) || 0,
             Mutation_type: cv.Mutation_type,
-            C_REVEL: cv.C_REVEL,
-            Points: cv.Points,
-            Functional: parseFloat(cv.Functional) || 0,
-            Pvalue_functional: parseFloat(cv.Pvalue_functional) || 0,
-            FDR_functional: cv.FDR_functional,
-            Effect_height: parseFloat(cv.Effect_height) || 0,
-            Pvalue_height: parseFloat(cv.Pvalue_height) || 0,
-            FDR_height: cv.FDR_height,
-            Count_height: parseFloat(cv.Count_height) || 0,
-            Effect_ratio: parseFloat(cv.Effect_ratio) || 0,
-            Pvalue_ratio: parseFloat(cv.Pvalue_ratio) || 0,
-            FDR_ratio: cv.FDR_ratio,
-            Count_ratio: parseFloat(cv.Count_ratio) || 0,
-            DD_enrich: parseFloat(cv.DD_enrich) || 0,
-            Pvalue_DD: parseFloat(cv.Pvalue_DD) || 0,
-            FDR_DD: cv.FDR_DD,
-            Count_DD: parseFloat(cv.Count_DD) || 0,
-            freq_background: parseFloat(cv.freq_background) || 0,
-            freq_DD: parseFloat(cv.freq_DD) || 0,
+
+            Functional: cv.Functional || "",
+            Pvalue_functional: cv.Pvalue_functional || "",
             "Allele Count": cv["Allele Count"],
             "Allele Number": cv["Allele Number"],
             "Allele Frequency": cv["Allele Frequency"],
@@ -254,8 +270,6 @@ export default function GeneDashboard() {
             MutPred_score: cv.MutPred_score,
             BayesDel_addAF_score: cv.BayesDel_addAF_score,
             ACMG: cv.ACMG,
-            New_Functional: cv.New_Functional,
-            New_Functional_Pvalue: cv.New_Functional_Pvalue,
             Meta_height: cv.Meta_height,
             Meta_height_SE: cv.Meta_height_SE,
             Meta_ratio: cv.Meta_ratio,
@@ -264,30 +278,35 @@ export default function GeneDashboard() {
         });
     }
 
-    // 2. Search Query - Support cDNA, Protein, and Genomic ID
+    // 2. Search Query - Different logic for ClinVar vs Custom
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((v) => {
-        // For custom variants, check additional fields
-        if (v.sourceType === "custom") {
-          const customV = v as any;
-          return (
-            v.gnomAD_ID.toLowerCase().includes(q) ||
-            (v.id && v.id.toLowerCase().includes(q)) ||
-            v.proteinConsequence.toLowerCase().includes(q) ||
-            (customV.cDNA_change &&
-              customV.cDNA_change.toLowerCase().includes(q)) ||
-            (customV.Genomic_ID &&
-              customV.Genomic_ID.toLowerCase().includes(q)) ||
-            (customV.Protein_change &&
-              customV.Protein_change.toLowerCase().includes(q))
-          );
+        // For ClinVar variants - search rsID, genomicID, and variation (preferred_name)
+        if (v.sourceType === "clinvar") {
+          const rsidMatch =
+            v.rsIDs && v.rsIDs.some((rsid) => rsid.toLowerCase().includes(q));
+          const genomicIdMatch =
+            v.genomicID && v.genomicID.toLowerCase().includes(q);
+          const variationMatch =
+            v.clinvar?.rcv?.preferred_name &&
+            v.clinvar.rcv.preferred_name.toLowerCase().includes(q);
+
+          return rsidMatch || genomicIdMatch || variationMatch;
         }
-        // For ClinVar variants
+
+        // For custom variants - existing search logic
+        const customV = v as any;
         return (
-          v.gnomAD_ID.toLowerCase().includes(q) ||
+          (v?.genomicID && v.genomicID.toLowerCase().includes(q)) ||
           (v.id && v.id.toLowerCase().includes(q)) ||
-          v.proteinConsequence.toLowerCase().includes(q)
+          v.proteinConsequence.toLowerCase().includes(q) ||
+          (customV.cDNA_change &&
+            customV.cDNA_change.toLowerCase().includes(q)) ||
+          (customV.Genomic_ID &&
+            customV.Genomic_ID.toLowerCase().includes(q)) ||
+          (customV.Protein_change &&
+            customV.Protein_change.toLowerCase().includes(q))
         );
       });
     }
@@ -306,7 +325,7 @@ export default function GeneDashboard() {
     if (filters.classifications.length > 0) {
       result = result.filter((v) => {
         if (v.sourceType === "custom") {
-          const calculatedClass = getClassificationLabel(v.Points || "");
+          const calculatedClass = getClassificationLabel(v.ACMG || "");
           return filters.classifications.includes(calculatedClass);
         }
         return filters.classifications.includes(
@@ -328,8 +347,6 @@ export default function GeneDashboard() {
       result = result.filter((v) => v.alleleFrequency >= Number(filters.afMin));
     if (filters.afMax !== "")
       result = result.filter((v) => v.alleleFrequency <= Number(filters.afMax));
-    if (filters.caddMin !== "")
-      result = result.filter((v) => v.cadd >= Number(filters.caddMin));
     if (filters.revelMin !== "")
       result = result.filter(
         (v) => Number(v.REVEL) >= Number(filters.revelMin)
@@ -340,40 +357,45 @@ export default function GeneDashboard() {
       );
 
     // 6. Sorting
-    result = [...result].sort((a, b) => {
-      switch (sortOption) {
-        case "af-desc":
-          return b.alleleFrequency - a.alleleFrequency;
-        case "af-asc":
-          return a.alleleFrequency - b.alleleFrequency;
-        case "cadd-desc":
-          return b.cadd - a.cadd;
-        case "revel-desc":
-          return Number(b.REVEL) - Number(a.REVEL);
-        case "points-desc":
-          return parseFloat(b.Points || "0") - parseFloat(a.Points || "0");
-        case "points-asc":
-          return parseFloat(a.Points || "0") - parseFloat(b.Points || "0");
-        case "id-asc":
-        default:
-          return (a.gnomAD_ID || "").localeCompare(b.gnomAD_ID || "");
-      }
-    });
+    // result = [...result].sort((a, b) => {
+    //   switch (sortOption) {
+    //     case "af-desc":
+    //       return b.alleleFrequency - a.alleleFrequency;
+    //     case "af-asc":
+    //       return a.alleleFrequency - b.alleleFrequency;
+    //     case "revel-desc":
+    //       return Number(b.REVEL) - Number(a.REVEL);
+    //     case "points-desc":
+    //       return parseFloat(b.ACMG || "0") - parseFloat(a.ACMG || "0");
+    //     case "points-asc":
+    //       return parseFloat(a.ACMG || "0") - parseFloat(b.ACMG || "0");
+    //     case "id-asc":
+    //     default:
+    //       return (a.genomicID || "").localeCompare(b.genomicID || "");
+    //   }
+    // });
 
     return result;
-  }, [clinvarVariants, viewMode, symbol, filters, searchQuery, sortOption]);
+  }, [clinvarVariants, viewMode, symbol, filters, searchQuery]);
 
   const classificationScatterData = useMemo(() => {
     return filteredAndSortedVariants
       .map((v) => {
         const x = extractPosition(v.proteinConsequence || v.hgvsConsequence);
-        const yValue = getCategoryIndex(v.Points || "0");
+
+        // Use different classification logic for ClinVar vs Custom
+        const yValue =
+          viewMode === "clinvar"
+            ? getCategoryIndexFromClinvar(v.clinvarGermlineClassification)
+            : getCategoryIndex(v.ACMG || "0");
+
         if (x === null) return null;
 
         const isHighlighted =
           searchQuery.trim() &&
           (v.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            v.gnomAD_ID.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (v.genomicID &&
+              v.genomicID.toLowerCase().includes(searchQuery.toLowerCase())) ||
             v.proteinConsequence
               .toLowerCase()
               .includes(searchQuery.toLowerCase()));
@@ -381,21 +403,30 @@ export default function GeneDashboard() {
         return {
           x,
           y: yValue,
-          label: `Variant: ${v.proteinConsequence || v.id} <br>Points: ${
-            v.Points || "0"
+          label: `Variant: ${
+            v.proteinConsequence || v.id
+          } <br>Classification: ${
+            viewMode === "clinvar"
+              ? v.clinvarGermlineClassification
+              : getLabelForPoints(v.ACMG || "0")
           }`,
-          color: getColorForPoints(v.Points || "0"),
+          color:
+            viewMode === "clinvar"
+              ? getColorForClinvarClassification(
+                  v.clinvarGermlineClassification
+                )
+              : getColorForPoints(v.ACMG || "0"),
           size: isHighlighted ? 12 : 8,
           symbol: isHighlighted ? "star" : "circle",
         } as ScatterDataPoint;
       })
       .filter((p): p is ScatterDataPoint => p !== null);
-  }, [filteredAndSortedVariants, searchQuery]);
+  }, [filteredAndSortedVariants, searchQuery, viewMode]);
 
   // Reset page when filters/search/sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters, searchQuery, sortOption, viewMode, symbol, pageSize]);
+  }, [filters, searchQuery, viewMode, symbol, pageSize]);
 
   const totalPages = Math.ceil(filteredAndSortedVariants.length / pageSize);
   const paginatedVariants = useMemo(() => {
@@ -420,6 +451,7 @@ export default function GeneDashboard() {
               filters={filters}
               setFilters={setFilters}
               availableData={viewMode === "clinvar" ? clinvarVariants : []}
+              viewMode={viewMode}
             />
           </div>
         </div>
@@ -579,7 +611,7 @@ export default function GeneDashboard() {
                 </div>
 
                 {/* Sort Dropdown */}
-                <div className="relative shrink-0">
+                {/* <div className="relative shrink-0">
                   <select
                     value={sortOption}
                     onChange={(e) =>
@@ -610,7 +642,7 @@ export default function GeneDashboard() {
                       />
                     </svg>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -632,55 +664,57 @@ export default function GeneDashboard() {
                   <div className="flex-1 flex flex-col min-h-0">
                     <div className="!p-0 !max-w-none shadow-sm relative overflow-hidden flex-1 w-full h-full min-h-[600px]">
                       {/* View Toggle */}
-                      <div className="flex inline-flex m-4">
-                        <button
-                          onClick={() => setChartView("scatter")}
-                          className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
-                            chartView === "scatter"
-                              ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
-                              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                          }`}
-                        >
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                      {viewMode === "custom" && (
+                        <div className="flex inline-flex m-4">
+                          <button
+                            onClick={() => setChartView("scatter")}
+                            className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                              chartView === "scatter"
+                                ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
+                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                            }`}
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13 10V3L4 14h7v7l9-11h-7z"
-                            />
-                          </svg>
-                          Scatter Distribution
-                        </button>
-                        <button
-                          onClick={() => setChartView("bar")}
-                          className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
-                            chartView === "bar"
-                              ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
-                              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                          }`}
-                        >
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 10V3L4 14h7v7l9-11h-7z"
+                              />
+                            </svg>
+                            Scatter Distribution
+                          </button>
+                          <button
+                            onClick={() => setChartView("bar")}
+                            className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                              chartView === "bar"
+                                ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
+                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                            }`}
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                            />
-                          </svg>
-                          Composition Bar
-                        </button>
-                      </div>
-                      {chartView === "scatter" ? (
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                              />
+                            </svg>
+                            Composition Bar
+                          </button>
+                        </div>
+                      )}
+                      {chartView === "scatter" && viewMode === "custom" ? (
                         <ScatterPlot
                           data={classificationScatterData}
                           xLabel="Protein Position (AA)"
@@ -695,6 +729,7 @@ export default function GeneDashboard() {
                             "Likely Pathogenic",
                             "Pathogenic",
                           ]}
+                          viewMode={viewMode}
                         />
                       ) : (
                         <div className="p-4 h-full">
@@ -702,6 +737,7 @@ export default function GeneDashboard() {
                             variants={filteredAndSortedVariants}
                             title="ACMG Aggregate Composition"
                             height="100%"
+                            viewMode={viewMode}
                           />
                         </div>
                       )}

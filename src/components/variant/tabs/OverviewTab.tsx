@@ -4,12 +4,14 @@ import Link from "next/link";
 
 interface OverviewTabProps {
   variant: Variant;
+  genomicID: string;
   clinvarMatches?: any[];
   isLoading?: boolean;
 }
 
 export default function OverviewTab({
   variant,
+  genomicID,
   clinvarMatches,
   isLoading = false,
 }: OverviewTabProps) {
@@ -17,7 +19,7 @@ export default function OverviewTab({
     useState(false);
   const [selectedClinVarIndex, setSelectedClinVarIndex] = useState(0);
   const hasClinVarMatches = clinvarMatches && clinvarMatches.length > 0;
-  const pointsField = variant.Points || "0";
+  const pointsField = variant.ACMG || "0";
   const pts = parseFloat(pointsField);
 
   // Classification logic
@@ -83,7 +85,7 @@ export default function OverviewTab({
             Genomic ID
           </h3>
           <p className="text-xs font-mono font-semibold text-gray-900 dark:text-gray-100 truncate" title={variant.Genomic_ID}>
-            {variant.Genomic_ID}
+            {genomicID || "NA"}
           </p>
         </div>
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -91,7 +93,7 @@ export default function OverviewTab({
             Mutation Type
           </h3>
           <p className="text-xs font-mono font-semibold text-gray-900 dark:text-gray-100 truncate" title={variant.Mutation_type}>
-            {variant.Mutation_type}
+            {variant.Mutation_type || "NA"}
           </p>
         </div>
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -99,7 +101,7 @@ export default function OverviewTab({
             Protein Change
           </h3>
           <p className="text-xs font-mono font-semibold text-gray-900 dark:text-gray-100 truncate" title={variant.proteinConsequence}>
-            {variant.proteinConsequence}
+            {variant.proteinConsequence || "NA"}
           </p>
         </div>
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -107,7 +109,7 @@ export default function OverviewTab({
             ACMG Score
           </h3>
           <p className="text-xs font-mono font-semibold text-gray-900 dark:text-gray-100">
-            {variant.Points}
+            {variant.ACMG || "NA"}
           </p>
         </div>
       </div>

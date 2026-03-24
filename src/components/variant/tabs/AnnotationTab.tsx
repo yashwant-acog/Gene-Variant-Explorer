@@ -76,7 +76,7 @@ export default function AnnotationTab({
     );
 
     // Find the maximum protein position for dynamic x-axis scaling
-    const maxPosition = points.length > 0 ? Math.max(...points.map(p => p.x)) : 100;
+    const maxPosition = points.length > 0 ? Math.max(...points.map((p: any) => p.x)) : 100;
     // Add 5% padding to the max value for better visualization
     const maxX = Math.ceil(maxPosition * 1.05);
 
@@ -246,7 +246,7 @@ export default function AnnotationTab({
             VEST4 Score
           </h3>
           <p
-            className={`text-xs font-mono font-bold ${variant.cadd >= 20 ? "text-orange-500 dark:text-orange-400" : "text-gray-900 dark:text-gray-100"}`}
+            className={`text-xs font-mono font-bold "text-gray-900 dark:text-gray-100"}`}
           >
             {variant.VEST4_score ? parseFloat(variant.VEST4_score).toFixed(2) : "N/A"}
           </p>
@@ -279,7 +279,7 @@ export default function AnnotationTab({
         </div>
       </div>
 
-      <div className="bg-gray-50 dark:bg-scientific-panel/50 p-4 rounded-lg border border-gray-100 dark:border-scientific-border/50">
+      {/* <div className="bg-gray-50 dark:bg-scientific-panel/50 p-4 rounded-lg border border-gray-100 dark:border-scientific-border/50">
         <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
           VEP Functional Consequence
         </h3>
@@ -291,7 +291,7 @@ export default function AnnotationTab({
             Via Ensembl VEP
           </span>
         </div>
-      </div>
+      </div> */}
 
       <div className="bg-white dark:bg-scientific-panel rounded-lg border border-gray-200 dark:border-scientific-border shadow-sm overflow-hidden">
         <div className="p-3 dark:bg-black/20 flex items-center justify-between">

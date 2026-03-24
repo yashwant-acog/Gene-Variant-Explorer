@@ -6,50 +6,33 @@ export const CUSTOM_COLUMNS = [
   { key: "cDNA_change", label: "cDNA Change", group: "Identity" },
   { key: "Genomic_ID", label: "Genomic ID", group: "Identity" },
   { key: "Protein_change", label: "Protein Change", group: "Identity" },
-
+  { key: "condition", label: "Conditions", group: "Clinical" },
   { key: "REVEL", label: "REVEL", group: "Predictive" },
-  { key: "C_REVEL", label: "C_REVEL", group: "Predictive" },
-  { key: "Points", label: "Points", group: "Predictive" },
   { key: "VEST4_score", label: "VEST4", group: "Predictive" },
   { key: "MutPred_score", label: "MutPred", group: "Predictive" },
   { key: "BayesDel_addAF_score", label: "BayesDel", group: "Predictive" },
   { key: "ACMG", label: "ACMG", group: "Predictive" },
+  {
+    key: "ACMG_classification",
+    label: "ACMG Classification",
+    group: "Predictive",
+  },
   { key: "Mutation_type", label: "Mutation", group: "Functional" },
+  { key: "Functional", label: "Functional", group: "Functional" },
+  {
+    key: "Pvalue_functional",
+    label: "P-value Functional",
+    group: "Functional",
+  },
   { key: "clinvar", label: "ClinVar", group: "Public Sources" },
   { key: "gnomad", label: "gnomAD", group: "Public Sources" },
-
-  { key: "Functional", label: "Functional", group: "Functional" },
-  { key: "Pvalue_functional", label: "P-value", group: "Functional" },
-  { key: "FDR_functional", label: "FDR", group: "Functional" },
-  { key: "New_Functional", label: "New Functional", group: "Functional" },
-  { key: "New_Functional_Pvalue", label: "New Func P-val", group: "Functional" },
-
-  { key: "Effect_height", label: "Effect", group: "Enrichment (H)" },
-  { key: "Pvalue_height", label: "P-value", group: "Enrichment (H)" },
-  { key: "FDR_height", label: "FDR", group: "Enrichment (H)" },
-  { key: "Count_height", label: "Count", group: "Enrichment (H)" },
   { key: "Meta_height", label: "Meta Height", group: "Enrichment (H)" },
   { key: "Meta_height_SE", label: "Meta Height SE", group: "Enrichment (H)" },
-
-  { key: "Effect_ratio", label: "Effect", group: "Enrichment (R)" },
-  { key: "Pvalue_ratio", label: "P-value", group: "Enrichment (R)" },
-  { key: "FDR_ratio", label: "FDR", group: "Enrichment (R)" },
-  { key: "Count_ratio", label: "Count", group: "Enrichment (R)" },
   { key: "Meta_ratio", label: "Meta Ratio", group: "Enrichment (R)" },
   { key: "Meta_ratio_SE", label: "Meta Ratio SE", group: "Enrichment (R)" },
-
-  { key: "DD_enrich", label: "DD Enrich", group: "DD Enrichment" },
-  { key: "Pvalue_DD", label: "P-value", group: "DD Enrichment" },
-  { key: "FDR_DD", label: "FDR", group: "DD Enrichment" },
-  { key: "Count_DD", label: "Count", group: "DD Enrichment" },
-
-  { key: "freq_background", label: "Freq BG", group: "Population" },
-  { key: "freq_DD", label: "Freq DD", group: "Population" },
   { key: "Allele Count", label: "Allele Count", group: "Population" },
   { key: "Allele Number", label: "Allele Num", group: "Population" },
   { key: "Allele Frequency", label: "Allele Freq", group: "Population" },
-
-  { key: "condition", label: "Conditions", group: "Clinical" },
 ];
 
 interface CustomVariantTableProps {
@@ -74,6 +57,31 @@ export default function CustomVariantTable({
     : CUSTOM_COLUMNS;
 
   const groups = Array.from(new Set(columns.map((c) => c.group)));
+
+  function getACMGColor(classification: string) {
+    switch (classification.toLowerCase()) {
+      case "benign":
+        return "bg-emerald-500 text-white";
+      case "likely benign":
+        return "bg-emerald-400 text-emerald-900";
+      case "vus":
+      case "uncertain significance":
+        return "bg-amber-400 text-amber-900";
+      case "likely pathogenic":
+        return "bg-orange-500 text-white";
+      case "pathogenic":
+        return "bg-red-600 text-white";
+      default:
+        return "bg-gray-400 text-white";
+    }
+  }
+  function getACMGClassification(points: number): string {
+    if (points >= 10) return "pathogenic";
+    if (points >= 6) return "likely pathogenic";
+    if (points >= -5) return "vus";
+    if (points >= -9) return "likely benign";
+    return "benign";
+  }
 
   return (
     <div className="border border-gray-200 dark:border-scientific-border rounded-b-lg shadow-sm">
@@ -134,15 +142,36 @@ export default function CustomVariantTable({
                   }
 
                   if (col.key === "cDNA_change") {
-                    const genomicIdEncoded = v.Genomic_ID ? encodeURIComponent(v.Genomic_ID) : '';
+                    const genomicIdEncoded = v.Genomic_ID
+                      ? encodeURIComponent(v.Genomic_ID)
+                      : "";
                     renderedValue = (
                       <Link
-                        href={`/variant/${encodeURIComponent(v.cDNA_change)}?genomicId=${genomicIdEncoded}`}
+                        href={`/variant/${encodeURIComponent(
+                          v.cDNA_change
+                        )}?genomicId=${genomicIdEncoded}`}
                         className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
                       >
                         {value}
                       </Link>
                     );
+                  }
+
+                  if (col.key === "ACMG_classification") {
+                    const points = parseFloat(v.ACMG);
+                    const classification = isNaN(points)
+                      ? null
+                      : getACMGClassification(points);
+
+                    renderedValue = classification ? (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap border ml-[40%] ${getACMGColor(
+                          classification
+                        )}`}
+                      >
+                        {classification.toUpperCase()}
+                      </span>
+                    ) : null;
                   }
 
                   if (col.key === "Functional") {
@@ -190,59 +219,95 @@ export default function CustomVariantTable({
                   }
 
                   // New predictive scores - VEST4, MutPred, BayesDel, ACMG
-                  if (["VEST4_score", "MutPred_score", "BayesDel_addAF_score"].includes(col.key)) {
-                    renderedValue = value && value !== "NA" ? (
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] whitespace-nowrap dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
-                        {typeof value === "string" && !isNaN(parseFloat(value)) ? parseFloat(value).toFixed(3) : value}
-                      </span>
-                    ) : null;
+                  if (
+                    [
+                      "VEST4_score",
+                      "MutPred_score",
+                      "BayesDel_addAF_score",
+                    ].includes(col.key)
+                  ) {
+                    renderedValue =
+                      value && value !== "NA" ? (
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] whitespace-nowrap dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                          {typeof value === "string" &&
+                          !isNaN(parseFloat(value))
+                            ? parseFloat(value).toFixed(3)
+                            : value}
+                        </span>
+                      ) : null;
                   }
 
                   if (col.key === "ACMG") {
-                    renderedValue = value && value !== "NA" ? (
-                      <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-100 rounded-full text-[10px] whitespace-nowrap dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800">
-                        {value}
-                      </span>
-                    ) : null;
+                    renderedValue =
+                      value && value !== "NA" ? (
+                        <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-100 rounded-full text-[10px] whitespace-nowrap dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800">
+                          {value}
+                        </span>
+                      ) : null;
                   }
 
                   // New Functional score
-                  if (col.key === "New_Functional") {
+                  if (col.key === "Functional") {
                     const numVal = parseFloat(value);
                     let colorClass = "";
 
                     if (!isNaN(numVal)) {
                       if (numVal < 0)
-                        colorClass = "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+                        colorClass =
+                          "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
                       else if (numVal > 0)
-                        colorClass = "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+                        colorClass =
+                          "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
                       else
-                        colorClass = "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400";
+                        colorClass =
+                          "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400";
                     }
 
-                    renderedValue = value && value !== "NA" ? (
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${colorClass}`}>
-                        {typeof value === "string" && !isNaN(numVal) ? numVal.toFixed(2) : value}
-                      </span>
-                    ) : null;
+                    renderedValue =
+                      value && value !== "NA" ? (
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-medium ${colorClass}`}
+                        >
+                          {typeof value === "string" && !isNaN(numVal)
+                            ? numVal
+                            : value}
+                        </span>
+                      ) : null;
                   }
 
                   // New Functional P-value
-                  if (col.key === "New_Functional_Pvalue") {
-                    renderedValue = value && value !== "NA" ? (
-                      <span className="font-mono text-xs">
-                        {typeof value === "string" && !isNaN(parseFloat(value)) ? parseFloat(value).toExponential(2) : value}
-                      </span>
-                    ) : null;
+                  if (col.key === "Pvalue_functional") {
+                    renderedValue =
+                      value && value !== "NA" ? (
+                        <span className="font-mono text-xs">
+                          {typeof value === "string" &&
+                          !isNaN(parseFloat(value))
+                            ? parseFloat(value)
+                            : value}
+                        </span>
+                      ) : null;
                   }
 
                   // Meta analysis columns
-                  if (["Meta_height", "Meta_height_SE", "Meta_ratio", "Meta_ratio_SE"].includes(col.key)) {
-                    renderedValue = value && value !== "NA" ? (
-                      <span className="font-mono text-xs">
-                        {typeof value === "string" && !isNaN(parseFloat(value)) ? parseFloat(value).toFixed(4) : value}
-                      </span>
-                    ) : "NA";
+                  if (
+                    [
+                      "Meta_height",
+                      "Meta_height_SE",
+                      "Meta_ratio",
+                      "Meta_ratio_SE",
+                    ].includes(col.key)
+                  ) {
+                    renderedValue =
+                      value && value !== "NA" ? (
+                        <span className="font-mono text-xs">
+                          {typeof value === "string" &&
+                          !isNaN(parseFloat(value))
+                            ? parseFloat(value).toFixed(4)
+                            : value}
+                        </span>
+                      ) : (
+                        "NA"
+                      );
                   }
 
                   if (col.key === "condition") {
@@ -254,9 +319,14 @@ export default function CustomVariantTable({
                   }
 
                   if (col.key === "clinvar") {
+                    const term = encodeURIComponent(
+                      `"${v.cDNA_change}"[VARNAME] AND "${"fgfr3"}"[GENE]`
+                    );
                     renderedValue = (
                       <Link
-                        href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${v.cDNA_change}&term="${v.cDNA_change}"%5BVARNAME%5D`}
+                        href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${
+                          v.cDNA_change
+                        }&gene=${"fgfr3"}&term=${term}`}
                         className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
                         target="_blank"
                       >

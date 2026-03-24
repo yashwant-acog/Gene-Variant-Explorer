@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useMemo, useState, useEffect } from "react";
+import React, { use, useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import TabLayout from "@/components/layout/TabLayout";
@@ -15,9 +15,6 @@ import FunctionalTab from "@/components/variant/tabs/FunctionalTab";
 import AnnotationTab from "@/components/variant/tabs/AnnotationTab";
 import PopulationTab from "@/components/variant/tabs/PopulationTab";
 import AssociationsTab from "@/components/variant/tabs/AssociationsTab";
-import TherapeuticsTab from "@/components/variant/tabs/TherapeuticsTab";
-import StructureTab from "@/components/variant/tabs/StructureTab";
-import LiteratureTab from "@/components/variant/tabs/LiteratureTab";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -49,7 +46,6 @@ export default function VariantPage({ params }: Props) {
         setIsClinVarLoading(true);
         try {
           // Call our Next.js API route instead of ClinVar directly
-          console.log("API called");
           const response = await fetch(
             `/api/clinvar/match?genomicId=${encodeURIComponent(
               genomicId
@@ -59,7 +55,6 @@ export default function VariantPage({ params }: Props) {
             throw new Error("Failed to fetch ClinVar data");
           }
           const matches = await response.json();
-          console.log("Matches found:", matches);
           if (matches && matches.length > 0) {
             setClinvarMatches(matches);
           }
@@ -96,9 +91,9 @@ export default function VariantPage({ params }: Props) {
         customVariant.condition && customVariant.condition !== "NA"
           ? customVariant.condition
           : "Custom Analysis",
-      gnomAD_ID:
-        customVariant.gnomAD && customVariant.gnomAD.trim() !== "NA"
-          ? customVariant.gnomAD.trim()
+      genomicID:
+        customVariant.Genomic_ID && customVariant.Genomic_ID.trim() !== "NA"
+          ? customVariant.Genomic_ID.trim()
           : "N/A",
       chromosome: genomicParts[0] || "N/A",
       position: parseInt(genomicParts[1]) || 0,
@@ -112,7 +107,6 @@ export default function VariantPage({ params }: Props) {
       clinvarGermlineClassification: "Unknown", // Add later
       clinvarVariationID: "",
       alleleFrequency: parseSci(customVariant["Allele Frequency"]),
-      cadd: Math.abs(parseSci(customVariant.Effect_height)),
       alleleCount: parseSci(customVariant["Allele Count"]),
       alleleNumber: parseSci(customVariant["Allele Number"]),
 
@@ -179,25 +173,15 @@ export default function VariantPage({ params }: Props) {
           ? [customVariant.condition]
           : [],
       Mutation_type: customVariant.Mutation_type,
-      Points: customVariant?.Points,
-      C_REVEL: customVariant?.C_REVEL,
       REVEL: customVariant?.REVEL,
       condition: customVariant?.condition,
       Genomic_ID: customVariant?.Genomic_ID,
-      freq_background: parseSci(customVariant.freq_background),
-      freq_DD: parseSci(customVariant.freq_DD),
-      Effect_height: parseSci(customVariant.Effect_height),
-      Pvalue_height: parseSci(customVariant.Pvalue_height),
-      Effect_ratio: parseSci(customVariant.Effect_ratio),
-      Pvalue_ratio: parseSci(customVariant.Pvalue_ratio),
-      Functional: parseSci(customVariant.Functional),
-      Pvalue_functional: parseSci(customVariant.Pvalue_functional),
+      Functional: customVariant.Functional,
+      Pvalue_functional: customVariant.Pvalue_functional,
       VEST4_score: customVariant.VEST4_score,
       MutPred_score: customVariant.MutPred_score,
       BayesDel_addAF_score: customVariant.BayesDel_addAF_score,
       ACMG: customVariant.ACMG,
-      New_Functional: customVariant.New_Functional,
-      New_Functional_Pvalue: customVariant.New_Functional_Pvalue,
       Meta_height: customVariant.Meta_height,
       Meta_height_SE: customVariant.Meta_height_SE,
       Meta_ratio: customVariant.Meta_ratio,
@@ -208,7 +192,7 @@ export default function VariantPage({ params }: Props) {
       id: cDNA,
       gene: "FGFR3",
       disease: "ClinVar Live Data Entry",
-      gnomAD_ID: cDNA,
+      genomicID: cDNA,
       chromosome: "N/A",
       position: 0,
       rsIDs: cDNA.startsWith("rs") ? [cDNA] : [],
@@ -221,7 +205,6 @@ export default function VariantPage({ params }: Props) {
       clinvarGermlineClassification: "Uncertain significance",
       clinvarVariationID: "",
       alleleFrequency: 0,
-      cadd: 0,
       REVEL: 0,
       alleleCount: 0,
       sourceType: "clinvar",
@@ -239,7 +222,7 @@ export default function VariantPage({ params }: Props) {
     return "Benign";
   };
 
-  const displayClassification = getClassificationByPoints(variant?.Points);
+  const displayClassification = getClassificationByPoints(variant?.ACMG);
 
   // Generate color classes for Pathogenicity Badge matching Dashboard map
   const badgeColors =
@@ -251,64 +234,6 @@ export default function VariantPage({ params }: Props) {
       : displayClassification.includes("Benign")
       ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:border-emerald-400/20"
       : "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
-
-  const annotationScatterData = [
-    {
-      x: 10,
-      y: 0.2,
-      label: "Background",
-      color: "rgba(107, 114, 128, 0.3)",
-      size: 6,
-    },
-    {
-      x: 12,
-      y: 0.1,
-      label: "Background",
-      color: "rgba(107, 114, 128, 0.3)",
-      size: 6,
-    },
-    {
-      x: 22,
-      y: 0.6,
-      label: "Background",
-      color: "rgba(107, 114, 128, 0.3)",
-      size: 6,
-    },
-    {
-      x: 28,
-      y: 0.8,
-      label: "Background",
-      color: "rgba(107, 114, 128, 0.3)",
-      size: 6,
-    },
-    {
-      x: 33,
-      y: 0.95,
-      label: "Background",
-      color: "rgba(107, 114, 128, 0.3)",
-      size: 6,
-    },
-    {
-      x: variant.cadd,
-      y: variant.REVEL,
-      label: variant.gnomAD_ID,
-      color: "#ef4444",
-      size: 12,
-      symbol: "star",
-    },
-  ];
-
-  // Seeded random for consistent dummy data per variant
-  const getSeededRandom = (seed: string) => {
-    let h = 0;
-    for (let i = 0; i < seed.length; i++)
-      h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
-    return () => {
-      h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
-      h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-    };
-  };
 
   const popDefinitions = useMemo(
     () => [
@@ -407,6 +332,7 @@ export default function VariantPage({ params }: Props) {
       content: (
         <OverviewTab
           variant={variant}
+          genomicID={genomicIdFromParam}
           clinvarMatches={clinvarMatches}
           isLoading={isClinVarLoading}
         />

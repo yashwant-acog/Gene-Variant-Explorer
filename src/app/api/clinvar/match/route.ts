@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
 
     const ids = searchData?.esearchresult?.idlist || [];
     if (!ids.length) {
-      console.log('No ClinVar IDs found.');
       return NextResponse.json([]);
     }
 
@@ -57,8 +56,6 @@ export async function GET(request: NextRequest) {
         }
       });
     });
-
-    console.log('Matched Variants:', matchedResults);
 
     return NextResponse.json(matchedResults);
 

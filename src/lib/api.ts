@@ -23,7 +23,7 @@ function mapApiHitToVariant(hit: any): Variant {
         id: hit._id,
         gene: c.gene?.symbol || "Unknown",
         disease: disease || "N/A",
-        gnomAD_ID: hit._id,
+        genomicID: hit._id,
         chromosome: c.chrom || "N/A",
         position: c.hg38?.start || c.hg19?.start || 0,
         rsIDs: c.rsid ? (Array.isArray(c.rsid) ? c.rsid : [c.rsid]) : [],
@@ -32,11 +32,10 @@ function mapApiHitToVariant(hit: any): Variant {
         transcript: hgvs.coding?.[0] || "N/A",
         hgvsConsequence: hgvs.coding?.[0] || "N/A",
         proteinConsequence: hgvs.protein?.[0] || hgvs.coding?.[0] || "N/A",
-        vepAnnotation: "missense_variant", // Defaulting as API sample doesn't specify VEP
+        vepAnnotation: "missense_variant",
         clinvarGermlineClassification: rcv.clinical_significance || "VUS",
         clinvarVariationID: String(c.variant_id || ""),
-        alleleFrequency: 0, // Not in simple clinvar field query
-        cadd: 0,
+        alleleFrequency: 0,
         sift: 0,
         polyphen: 0,
         alleleCountAfrican: 0,
@@ -45,6 +44,53 @@ function mapApiHitToVariant(hit: any): Variant {
         alleleCountSouthAsian: 0,
         sourceType: "clinvar",
         conditions,
+        // Store exact ClinVar API response structure
+        _id: hit._id,
+        _score: hit._score || 0,
+        clinvar: {
+            _license: c._license || "",
+            allele_id: c.allele_id || null,
+            alt: c.alt || "",
+            chrom: c.chrom || "",
+            cytogenic: c.cytogetic || "",
+            gene: {
+                id: c.gene?.id || "",
+                symbol: c.gene?.symbol || ""
+            },
+            hg19: {
+                start: c.hg19?.start || null,
+                end: c.hg19?.end || null
+            },
+            hg38: {
+                start: c.hg38?.start || null,
+                end: c.hg38?.end || null
+            },
+            hgvs: {
+                coding: hgvs.coding || [],
+                genomic: hgvs.genomic || [],
+                protein: hgvs.protein || [],
+                "non-coding": hgvs["non-coding"] || ""
+            },
+            omim: c.omim || "",
+            rcv: {
+                accession: rcv.accession || "",
+                clinical_significance: rcv.clinical_significance || "",
+                conditions: {
+                    identifiers: rcv.conditions?.identifiers || {},
+                    name: rcv.conditions?.name || "",
+                    synonyms: rcv.conditions?.synonyms || []
+                },
+                last_evaluated: rcv.last_evaluated || "",
+                number_submitters: rcv.number_submitters || 0,
+                origin: rcv.origin || "",
+                preferred_name: rcv.preferred_name || "",
+                review_status: rcv.review_status || ""
+            },
+            ref: c.ref || "",
+            rsid: c.rsid || "",
+            type: c.type || "",
+            variant_id: c.variant_id || null
+        }
     };
 }
 

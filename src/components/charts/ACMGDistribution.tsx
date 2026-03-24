@@ -10,6 +10,7 @@ interface ACMGDistributionProps {
   variants: Variant[];
   title?: string;
   height?: number | string;
+  viewMode?: "clinvar" | "custom";
 }
 
 const getLabelForPoints = (points?: string): string => {
@@ -35,10 +36,12 @@ export default function ACMGDistribution({
   variants,
   title = "ACMG Classification Distribution",
   height = 300,
+  viewMode = "custom",
 }: ACMGDistributionProps) {
   const chartData = useMemo(() => {
     if (!variants || variants.length === 0) return [];
 
+    // Different counting logic for ClinVar vs Custom
     const counts: Record<string, number> = {
       Benign: 0,
       "Likely Benign": 0,
@@ -48,7 +51,29 @@ export default function ACMGDistribution({
     };
 
     variants.forEach((v) => {
-      const label = getLabelForPoints(v.Points);
+      let label: string;
+      
+      if (viewMode === "clinvar") {
+        // Use ClinVar classification directly
+        const cls = v.clinvarGermlineClassification?.toLowerCase() || "";
+        if (cls.includes("pathogenic") && !cls.includes("likely")) {
+          label = "Pathogenic";
+        } else if (cls.includes("likely pathogenic")) {
+          label = "Likely Pathogenic";
+        } else if (cls.includes("vus") || cls.includes("uncertain")) {
+          label = "VUS";
+        } else if (cls.includes("likely benign")) {
+          label = "Likely Benign";
+        } else if (cls.includes("benign") && !cls.includes("likely")) {
+          label = "Benign";
+        } else {
+          label = "VUS"; // Default for unknown
+        }
+      } else {
+        // Use ACMG points for Custom table
+        label = getLabelForPoints(v.ACMG);
+      }
+      
       if (counts[label] !== undefined) {
         counts[label]++;
       }
@@ -68,7 +93,7 @@ export default function ACMGDistribution({
         hoverinfo: "x+y" as const,
       },
     ];
-  }, [variants]);
+  }, [variants, viewMode]);
 
   if (!variants || variants.length === 0) return null;
 

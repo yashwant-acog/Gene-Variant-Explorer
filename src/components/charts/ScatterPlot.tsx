@@ -22,6 +22,7 @@ interface ScatterPlotProps {
   height?: number | string;
   yTickVals?: number[];
   yTickText?: string[];
+  viewMode?: "clinvar" | "custom";
 }
 
 export default function ScatterPlot({
@@ -32,6 +33,7 @@ export default function ScatterPlot({
   height = 300,
   yTickVals,
   yTickText,
+  viewMode = "custom",
 }: ScatterPlotProps) {
   const plotData = useMemo(() => {
     if (!data || data.length === 0) return [];

@@ -4,7 +4,7 @@ export interface Variant {
     disease: string;
 
     // New specific genetic fields requested
-    gnomAD_ID: string;
+    genomicID?: string;
     chromosome: string;
     position: number;
     rsIDs: string[];
@@ -17,7 +17,6 @@ export interface Variant {
     clinvarGermlineClassification: string;
     clinvarVariationID: string;
     alleleFrequency: number;
-    cadd: number;
     
     // Population fields (some used for ClinVar, some for Custom)
     alleleCount?: number;
@@ -62,8 +61,6 @@ export interface Variant {
     Pvalue_height?: number;
     Effect_ratio?: number;
     Pvalue_ratio?: number;
-    Functional?: number;
-    Pvalue_functional?: number;
 
     sourceType: "clinvar" | "custom";
     conditions?: string[];
@@ -83,12 +80,65 @@ export interface Variant {
     MutPred_score?: string;
     BayesDel_addAF_score?: string;
     ACMG?: string;
-    New_Functional?: string;
-    New_Functional_Pvalue?: string;
+    Functional?: string;
+    Pvalue_functional?: string;
     Meta_height?: string;
     Meta_height_SE?: string;
     Meta_ratio?: string;
     Meta_ratio_SE?: string;
+
+    // ClinVar API response structure
+    _id?: string;
+    _score?: number;
+    clinvar?: {
+        _license: string;
+        allele_id: number | null;
+        alt: string;
+        chrom: string;
+        cytogenic: string;
+        gene: {
+            id: string;
+            symbol: string;
+        };
+        hg19: {
+            start: number | null;
+            end: number | null;
+        };
+        hg38: {
+            start: number | null;
+            end: number | null;
+        };
+        hgvs: {
+            coding: string[];
+            genomic: string[];
+            protein: string[];
+            "non-coding": string;
+        };
+        omim: string;
+        rcv: {
+            accession: string;
+            clinical_significance: string;
+            conditions: {
+                identifiers: {
+                    medgen?: string;
+                    mondo?: string;
+                    omim?: string;
+                    orphanet?: string;
+                };
+                name: string;
+                synonyms: string[];
+            };
+            last_evaluated: string;
+            number_submitters: number;
+            origin: string;
+            preferred_name: string;
+            review_status: string;
+        };
+        ref: string;
+        rsid: string;
+        type: string;
+        variant_id: number | null;
+    };
 }
 
 export interface CustomVariant {
@@ -96,27 +146,7 @@ export interface CustomVariant {
     Protein_change: string;
     cDNA_change: string;
     Genomic_ID: string;
-    gnomAD: string;
-    Effect_height: string;
-    Pvalue_height: string;
-    FDR_height: string;
-    Count_height: string;
-    Effect_ratio: string;
-    Pvalue_ratio: string;
-    FDR_ratio: string;
-    Count_ratio: string;
-    Functional: string;
-    Pvalue_functional: string;
-    FDR_functional: string;
-    DD_enrich: string;
-    Pvalue_DD: string;
-    FDR_DD: string;
-    Count_DD: string;
-    freq_background: string;
-    freq_DD: string;
     condition: string;
-    C_REVEL: string;
-    Points: string;
     Mutation_type: string;
     "Allele Count": string;
     "Allele Number": string;
@@ -140,14 +170,13 @@ export interface CustomVariant {
     "Allele Count South Asian": string;
     "Allele Number South Asian": string;
     REVEL: string;
-    
     // New columns added
     VEST4_score: string;
     MutPred_score: string;
     BayesDel_addAF_score: string;
     ACMG: string;
-    New_Functional: string;
-    New_Functional_Pvalue: string;
+    Functional: string;
+    Pvalue_functional: string;
     Meta_height: string;
     Meta_height_SE: string;
     Meta_ratio: string;
