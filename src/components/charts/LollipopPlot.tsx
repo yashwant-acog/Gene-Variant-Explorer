@@ -22,7 +22,7 @@ const extractPosition = (proteinConsequence: string): number | null => {
 const CLASSIFICATIONS = [
   "Benign",
   "Likely Benign",
-  "VUS",
+  "Uncertain Significance",
   "Likely Pathogenic",
   "Pathogenic",
 ];
@@ -34,29 +34,29 @@ const getColorForClassification = (points?: string) => {
 
   if (pts >= 20) return "#ef4444"; // Pathogenic: Red
   if (pts >= 15) return "#f97316"; // Likely Pathogenic: Orange
-  if (pts >= 8) return "#eab308"; // VUS: Yellow
+  if (pts >= 8) return "#eab308"; // Uncertain Significance: Yellow
   if (pts >= 4) return "#34d399"; // Likely Benign: Light Emerald
   return "#10b981"; // Benign: Emerald
 };
 
 const getCategoryIndex = (points?: string): number => {
   const pts = parseFloat(points || "0");
-  if (isNaN(pts)) return 2; // Default to VUS
+  if (isNaN(pts)) return 2; // Default to Uncertain Significance
 
   if (pts >= 20) return 4; // Pathogenic
   if (pts >= 15) return 3; // Likely Pathogenic
-  if (pts >= 8) return 2; // VUS
+  if (pts >= 8) return 2; // Uncertain Significance
   if (pts >= 4) return 1; // Likely Benign
   return 0; // Benign
 };
 
 const getLabelForPoints = (points?: string): string => {
   const pts = parseFloat(points || "0");
-  if (isNaN(pts)) return "VUS";
+  if (isNaN(pts)) return "Uncertain Significance";
 
   if (pts >= 20) return "Pathogenic";
   if (pts >= 15) return "Likely Pathogenic";
-  if (pts >= 8) return "VUS";
+  if (pts >= 8) return "Uncertain Significance";
   if (pts >= 4) return "Likely Benign";
   return "Benign";
 };

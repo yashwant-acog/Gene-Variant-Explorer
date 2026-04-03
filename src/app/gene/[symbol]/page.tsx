@@ -31,62 +31,107 @@ const extractPosition = (proteinConsequence: string): number | null => {
   return match ? parseInt(match[0], 10) : null;
 };
 
+const AA_MAP: Record<string, string> = {
+  Ala: "A",
+  Arg: "R",
+  Asn: "N",
+  Asp: "D",
+  Cys: "C",
+  Gln: "Q",
+  Glu: "E",
+  Gly: "G",
+  His: "H",
+  Ile: "I",
+  Leu: "L",
+  Lys: "K",
+  Met: "M",
+  Phe: "F",
+  Pro: "P",
+  Ser: "S",
+  Thr: "T",
+  Trp: "W",
+  Tyr: "Y",
+  Val: "V",
+  Asx: "B",
+  Glx: "Z",
+  Xaa: "X",
+  Xle: "J",
+  Ter: "*",
+};
+
+const formatProteinConsequence = (consequence: string) => {
+  if (!consequence || !consequence.includes("p.")) return consequence;
+  const pPart = consequence.split("p.")[1] || consequence;
+  return pPart.replace(/([A-Z][a-z]{2})/g, (match) => {
+    return AA_MAP[match] || match;
+  });
+};
+
+// Helper for dataset merging
+const normalizeCDNA = (cdna: string) => {
+  if (!cdna || cdna === "N/A" || cdna === "NA") return "";
+  const part = cdna.includes(":") ? cdna.split(":")[1] : cdna;
+  return part.trim().replace(/\s+/g, "").toUpperCase();
+};
+
 const getColorForPoints = (points?: string) => {
   const pts = parseFloat(points || "0");
   if (isNaN(pts)) return "#9ca3af"; // Gray
 
   if (pts >= 10) return "#ef4444"; // Pathogenic: Red
   if (pts >= 6) return "#f97316"; // Likely Pathogenic: Orange
-  if (pts >= -5) return "#eab308"; // VUS: Yellow
+  if (pts >= -5) return "#eab308"; // Uncertain Significance: Yellow
   if (pts >= -9) return "#34d399"; // Likely Benign: Light Emerald
   return "#10b981"; // Benign: Emerald
 };
 
 const getCategoryIndex = (points?: string): number => {
   const pts = parseFloat(points || "0");
-  if (isNaN(pts)) return 2; // Default to VUS
+  if (isNaN(pts)) return 2; // Default to Uncertain Significance
 
   if (pts >= 10) return 4; // Pathogenic
   if (pts >= 6) return 3; // Likely Pathogenic
-  if (pts >= -5) return 2; // VUS
+  if (pts >= -5) return 2; // Uncertain Significance
   if (pts >= -9) return 1; // Likely Benign
   return 0; // Benign
 };
 
 const getLabelForPoints = (points?: string): string => {
   const pts = parseFloat(points || "0");
-  if (isNaN(pts)) return "VUS";
+  if (isNaN(pts)) return "Uncertain Significance";
 
   if (pts >= 10) return "Pathogenic";
   if (pts >= 6) return "Likely Pathogenic";
-  if (pts >= -5) return "VUS";
+  if (pts >= -5) return "Uncertain Significance";
   if (pts >= -9) return "Likely Benign";
   return "Benign";
 };
 
 // Helper functions for ClinVar classification
 const getCategoryIndexFromClinvar = (classification?: string): number => {
-  if (!classification) return 2; // Default to VUS
+  if (!classification) return 2; // Default to Uncertain Significance
 
   const cls = classification.toLowerCase();
   if (cls.includes("pathogenic") && !cls.includes("likely")) return 4; // Pathogenic
   if (cls.includes("likely pathogenic")) return 3; // Likely Pathogenic
-  if (cls.includes("vus") || cls.includes("uncertain")) return 2; // VUS/Uncertain significance
+  if (cls.includes("Uncertain Significance") || cls.includes("uncertain"))
+    return 2; // Uncertain Significance/Uncertain significance
   if (cls.includes("likely benign")) return 1; // Likely Benign
   if (cls.includes("benign") && !cls.includes("likely")) return 0; // Benign
-  return 2; // Default to VUS for unknown classifications
+  return 2; // Default to Uncertain Significance for unknown classifications
 };
 
 const getColorForClinvarClassification = (classification?: string): string => {
-  if (!classification) return "#eab308"; // Default VUS color
+  if (!classification) return "#eab308"; // Default Uncertain Significance color
 
   const cls = classification.toLowerCase();
   if (cls.includes("pathogenic") && !cls.includes("likely")) return "#ef4444"; // Pathogenic: Red
   if (cls.includes("likely pathogenic")) return "#f97316"; // Likely Pathogenic: Orange
-  if (cls.includes("vus") || cls.includes("uncertain")) return "#eab308"; // VUS: Yellow
+  if (cls.includes("Uncertain Significance") || cls.includes("uncertain"))
+    return "#eab308"; // Uncertain Significance: Yellow
   if (cls.includes("likely benign")) return "#34d399"; // Likely Benign: Light Emerald
   if (cls.includes("benign") && !cls.includes("likely")) return "#10b981"; // Benign: Emerald
-  return "#eab308"; // Default VUS color
+  return "#eab308"; // Default Uncertain Significance color
 };
 
 export default function GeneDashboard() {
@@ -101,18 +146,21 @@ export default function GeneDashboard() {
   // searchQuery is initialized from URL below
   // const [sortOption, setSortOption] = useState<SortOption>("id-asc");
   const [clinvarVariants, setClinvarVariants] = useState<Variant[]>([]);
+  const [clinvarTotal, setClinvarTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [visibleClinVarColumns, setVisibleClinVarColumns] = useState<string[]>(
-    CLINVAR_COLUMNS.map((col) => col.key)
+    CLINVAR_COLUMNS.map((col) => col.key),
   );
   const [visibleCustomColumns, setVisibleCustomColumns] = useState<string[]>([
     "cDNA_change",
     "Genomic_ID",
     "Protein_change",
     "Mutation_type",
-    "ACMG_classification",
+    "acmgClassification",
+    "clinvarClassification",
     "clinvar",
     "gnomad",
   ]);
@@ -207,23 +255,89 @@ export default function GeneDashboard() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [filters, searchQuery, viewMode, router]);
 
+  // Initial data load
   useEffect(() => {
     let isMounted = true;
-    async function loadData() {
+    async function loadInitialData() {
+      if (!symbol) return;
       setIsLoading(true);
-      const data = await fetchClinVarVariants(symbol);
+      const { variants, total } = await fetchClinVarVariants(symbol, 0, 1000);
       if (isMounted) {
-        setClinvarVariants(data);
+        setClinvarVariants(variants);
+        setClinvarTotal(total);
         setIsLoading(false);
       }
     }
-    if (symbol) {
-      loadData();
-    }
+    loadInitialData();
     return () => {
       isMounted = false;
     };
   }, [symbol]);
+
+  // Fetch more data if the current page requires variants beyond what we've loaded
+  useEffect(() => {
+    const variantsNeeded = currentPage * pageSize;
+    if (
+      viewMode === "clinvar" &&
+      !isLoading &&
+      !isFetchingMore &&
+      variantsNeeded > clinvarVariants.length &&
+      clinvarVariants.length < clinvarTotal
+    ) {
+      const fetchMore = async () => {
+        setIsFetchingMore(true);
+        const { variants } = await fetchClinVarVariants(
+          symbol,
+          clinvarVariants.length,
+          1000,
+        );
+        setClinvarVariants((prev) => [...prev, ...variants]);
+        setIsFetchingMore(false);
+      };
+      fetchMore();
+    }
+  }, [
+    currentPage,
+    pageSize,
+    viewMode,
+    clinvarVariants.length,
+    clinvarTotal,
+    isLoading,
+    isFetchingMore,
+    symbol,
+  ]);
+
+  // Lookup maps for O(1) cross-dataset access
+  const customLookupMap = useMemo(() => {
+    const map = new Map<string, any>();
+    dummyCustomVariants.forEach((cv) => {
+      const key = normalizeCDNA(cv.cDNA_change);
+      if (key) {
+        map.set(key, {
+          label: getLabelForPoints(cv.ACMG),
+          condition: cv.condition,
+          genomicID: cv.Genomic_ID,
+        });
+      }
+    });
+    return map;
+  }, []);
+
+  const clinvarLookupMap = useMemo(() => {
+    const map = new Map<string, any>();
+    clinvarVariants.forEach((v) => {
+      const key = normalizeCDNA(v.hgvsConsequence);
+      if (key) {
+        map.set(key, {
+          classification: v.clinvarGermlineClassification,
+          conditions: v.conditions,
+          variationID: v.clinvarVariationID,
+          genomicID: v.genomicID,
+        });
+      }
+    });
+    return map;
+  }, [clinvarVariants]);
 
   const filteredAndSortedVariants = useMemo(() => {
     // Initial dataset based on view mode
@@ -274,15 +388,44 @@ export default function GeneDashboard() {
             Meta_height_SE: cv.Meta_height_SE,
             Meta_ratio: cv.Meta_ratio,
             Meta_ratio_SE: cv.Meta_ratio_SE,
+            acmgClassification: getLabelForPoints(cv.ACMG),
+            clinvarClassification: clinvarLookupMap.get(
+              normalizeCDNA(cv.cDNA_change),
+            )?.classification,
+            clinvarConditions: clinvarLookupMap.get(
+              normalizeCDNA(cv.cDNA_change),
+            )?.conditions,
           };
         });
+    }
+
+    if (viewMode === "clinvar") {
+      result = result.map((v) => {
+        const customMatch = customLookupMap.get(
+          normalizeCDNA(v.hgvsConsequence),
+        );
+        return {
+          ...v,
+          clinvarClassification: v.clinvarGermlineClassification,
+          acmgClassification: customMatch?.label,
+          customCondition: customMatch?.condition,
+          customGenomicID: customMatch?.genomicID,
+        };
+      });
     }
 
     // 2. Search Query - Different logic for ClinVar vs Custom
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((v) => {
-        // For ClinVar variants - search rsID, genomicID, and variation (preferred_name)
+        const formattedProtein = formatProteinConsequence(
+          v.proteinConsequence,
+        ).toLowerCase();
+        const proteinMatch =
+          v.proteinConsequence.toLowerCase().includes(q) ||
+          formattedProtein.includes(q);
+
+        // For ClinVar variants - search rsID, genomicID, variation (preferred_name), and protein
         if (v.sourceType === "clinvar") {
           const rsidMatch =
             v.rsIDs && v.rsIDs.some((rsid) => rsid.toLowerCase().includes(q));
@@ -292,7 +435,7 @@ export default function GeneDashboard() {
             v.clinvar?.rcv?.preferred_name &&
             v.clinvar.rcv.preferred_name.toLowerCase().includes(q);
 
-          return rsidMatch || genomicIdMatch || variationMatch;
+          return rsidMatch || genomicIdMatch || variationMatch || proteinMatch;
         }
 
         // For custom variants - existing search logic
@@ -300,13 +443,17 @@ export default function GeneDashboard() {
         return (
           (v?.genomicID && v.genomicID.toLowerCase().includes(q)) ||
           (v.id && v.id.toLowerCase().includes(q)) ||
-          v.proteinConsequence.toLowerCase().includes(q) ||
+          proteinMatch ||
           (customV.cDNA_change &&
             customV.cDNA_change.toLowerCase().includes(q)) ||
           (customV.Genomic_ID &&
             customV.Genomic_ID.toLowerCase().includes(q)) ||
           (customV.Protein_change &&
-            customV.Protein_change.toLowerCase().includes(q))
+            customV.Protein_change.toLowerCase().includes(q)) ||
+          (customV.Protein_change &&
+            formatProteinConsequence(customV.Protein_change)
+              .toLowerCase()
+              .includes(q))
         );
       });
     }
@@ -314,10 +461,10 @@ export default function GeneDashboard() {
     // 3. Classifications
     const getClassificationLabel = (p: string) => {
       const pts = parseFloat(p || "0");
-      if (isNaN(pts)) return "VUS";
+      if (isNaN(pts)) return "Uncertain Significance";
       if (pts >= 10) return "Pathogenic";
       if (pts >= 6) return "Likely Pathogenic";
-      if (pts >= -5) return "VUS";
+      if (pts >= -5) return "Uncertain Significance";
       if (pts >= -9) return "Likely Benign";
       return "Benign";
     };
@@ -326,11 +473,47 @@ export default function GeneDashboard() {
       result = result.filter((v) => {
         if (v.sourceType === "custom") {
           const calculatedClass = getClassificationLabel(v.ACMG || "");
-          return filters.classifications.includes(calculatedClass);
+          return filters.classifications.some((f) => {
+            if (f === "Uncertain significance / Uncertain Significance")
+              return calculatedClass === "Uncertain Significance";
+            return f.toLowerCase() === calculatedClass.toLowerCase();
+          });
         }
-        return filters.classifications.includes(
-          v.clinvarGermlineClassification
-        );
+
+        // ClinVar variants
+        const clinvarClassRaw = v.clinvarGermlineClassification || "";
+        const individualClasses = clinvarClassRaw
+          .split(" || ")
+          .map((part) => part.split("(")[0].trim().toLowerCase());
+
+        return filters.classifications.some((f) => {
+          const filterLower = f.toLowerCase();
+
+          // Handle "Uncertain significance"
+          if (filterLower.includes("uncertain significance")) {
+            return individualClasses.some(
+              (cls) =>
+                cls === "uncertain significance" ||
+                cls === "vus" ||
+                cls.includes("uncertain"),
+            );
+          }
+
+          // Handle compound labels
+          if (filterLower === "pathogenic/likely pathogenic") {
+            return individualClasses.some(
+              (cls) => cls === "pathogenic" || cls === "likely pathogenic",
+            );
+          }
+          if (filterLower === "benign/likely benign") {
+            return individualClasses.some(
+              (cls) => cls === "benign" || cls === "likely benign",
+            );
+          }
+
+          // Direct match for other labels
+          return individualClasses.some((cls) => cls === filterLower);
+        });
       });
     }
 
@@ -338,7 +521,7 @@ export default function GeneDashboard() {
     if (filters.mutationTypes.length > 0) {
       result = result.filter(
         (v) =>
-          v.Mutation_type && filters.mutationTypes.includes(v.Mutation_type)
+          v.Mutation_type && filters.mutationTypes.includes(v.Mutation_type),
       );
     }
 
@@ -349,11 +532,11 @@ export default function GeneDashboard() {
       result = result.filter((v) => v.alleleFrequency <= Number(filters.afMax));
     if (filters.revelMin !== "")
       result = result.filter(
-        (v) => Number(v.REVEL) >= Number(filters.revelMin)
+        (v) => Number(v.REVEL) >= Number(filters.revelMin),
       );
     if (filters.revelMax !== "")
       result = result.filter(
-        (v) => Number(v.REVEL) <= Number(filters.revelMax)
+        (v) => Number(v.REVEL) <= Number(filters.revelMax),
       );
 
     // 6. Sorting
@@ -413,7 +596,7 @@ export default function GeneDashboard() {
           color:
             viewMode === "clinvar"
               ? getColorForClinvarClassification(
-                  v.clinvarGermlineClassification
+                  v.clinvarGermlineClassification,
                 )
               : getColorForPoints(v.ACMG || "0"),
           size: isHighlighted ? 12 : 8,
@@ -428,9 +611,13 @@ export default function GeneDashboard() {
     setCurrentPage(1);
   }, [filters, searchQuery, viewMode, symbol, pageSize]);
 
-  const totalPages = Math.ceil(filteredAndSortedVariants.length / pageSize);
+  const displayTotal =
+    viewMode === "clinvar" ? clinvarTotal : filteredAndSortedVariants.length;
+
+  const totalPages = Math.ceil(displayTotal / pageSize);
   const paginatedVariants = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
+    // For ClinVar, we use the raw filtered list which grows as we fetch more
     return filteredAndSortedVariants.slice(start, start + pageSize);
   }, [filteredAndSortedVariants, currentPage, pageSize]);
 
@@ -447,12 +634,7 @@ export default function GeneDashboard() {
           }`}
         >
           <div className="h-full overflow-y-auto">
-            <FilterPanel
-              filters={filters}
-              setFilters={setFilters}
-              availableData={viewMode === "clinvar" ? clinvarVariants : []}
-              viewMode={viewMode}
-            />
+            <FilterPanel filters={filters} setFilters={setFilters} />
           </div>
         </div>
 
@@ -725,7 +907,7 @@ export default function GeneDashboard() {
                           yTickText={[
                             "Benign",
                             "Likely Benign",
-                            "VUS",
+                            "Uncertain Significance",
                             "Likely Pathogenic",
                             "Pathogenic",
                           ]}
@@ -762,12 +944,12 @@ export default function GeneDashboard() {
                             <span className="font-semibold text-gray-900 dark:text-gray-100">
                               {Math.min(
                                 currentPage * pageSize,
-                                filteredAndSortedVariants.length
+                                filteredAndSortedVariants.length,
                               )}
                             </span>{" "}
                             of{" "}
                             <span className="font-semibold text-gray-900 dark:text-gray-100">
-                              {filteredAndSortedVariants.length}
+                              {displayTotal}
                             </span>{" "}
                             variants
                           </div>
@@ -798,6 +980,12 @@ export default function GeneDashboard() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
+                          {isFetchingMore && (
+                            <div className="flex items-center gap-2 text-xs font-medium text-primary-600 dark:text-scientific-accent animate-pulse">
+                              <div className="w-3 h-3 border-2 border-primary-600 dark:border-scientific-accent border-t-transparent rounded-full animate-spin"></div>
+                              <span>Loading batch...</span>
+                            </div>
+                          )}
                           <ColumnSelector
                             columns={
                               viewMode === "clinvar"
@@ -837,7 +1025,7 @@ export default function GeneDashboard() {
                             <button
                               onClick={() =>
                                 setCurrentPage((prev) =>
-                                  Math.min(totalPages, prev + 1)
+                                  Math.min(totalPages, prev + 1),
                                 )
                               }
                               disabled={
@@ -857,11 +1045,13 @@ export default function GeneDashboard() {
                       <VariantTable
                         variants={paginatedVariants}
                         visibleColumns={visibleClinVarColumns}
+                        gene={symbol}
                       />
                     ) : (
                       <CustomVariantTable
                         variants={paginatedVariants as any}
                         visibleColumns={visibleCustomColumns}
+                        gene={symbol}
                       />
                     )}
                   </div>

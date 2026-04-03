@@ -15,11 +15,11 @@ interface ACMGDistributionProps {
 
 const getLabelForPoints = (points?: string): string => {
   const pts = parseFloat(points || "0");
-  if (isNaN(pts)) return "VUS";
+  if (isNaN(pts)) return "Uncertain Significance";
 
   if (pts >= 10) return "Pathogenic";
   if (pts >= 6) return "Likely Pathogenic";
-  if (pts >= -5) return "VUS";
+  if (pts >= -5) return "Uncertain Significance";
   if (pts >= -9) return "Likely Benign";
   return "Benign";
 };
@@ -27,7 +27,7 @@ const getLabelForPoints = (points?: string): string => {
 const CATEGORIES = [
   { label: "Benign", color: "#10b981" },
   { label: "Likely Benign", color: "#34d399" },
-  { label: "VUS", color: "#eab308" },
+  { label: "Uncertain Significance", color: "#eab308" },
   { label: "Likely Pathogenic", color: "#f97316" },
   { label: "Pathogenic", color: "#ef4444" },
 ];
@@ -45,14 +45,14 @@ export default function ACMGDistribution({
     const counts: Record<string, number> = {
       Benign: 0,
       "Likely Benign": 0,
-      VUS: 0,
+      "Uncertain Significance": 0,
       "Likely Pathogenic": 0,
       Pathogenic: 0,
     };
 
     variants.forEach((v) => {
       let label: string;
-      
+
       if (viewMode === "clinvar") {
         // Use ClinVar classification directly
         const cls = v.clinvarGermlineClassification?.toLowerCase() || "";
@@ -60,20 +60,23 @@ export default function ACMGDistribution({
           label = "Pathogenic";
         } else if (cls.includes("likely pathogenic")) {
           label = "Likely Pathogenic";
-        } else if (cls.includes("vus") || cls.includes("uncertain")) {
-          label = "VUS";
+        } else if (
+          cls.includes("Uncertain Significance") ||
+          cls.includes("uncertain")
+        ) {
+          label = "Uncertain Significance";
         } else if (cls.includes("likely benign")) {
           label = "Likely Benign";
         } else if (cls.includes("benign") && !cls.includes("likely")) {
           label = "Benign";
         } else {
-          label = "VUS"; // Default for unknown
+          label = "Uncertain Significance"; // Default for unknown
         }
       } else {
         // Use ACMG points for Custom table
         label = getLabelForPoints(v.ACMG);
       }
-      
+
       if (counts[label] !== undefined) {
         counts[label]++;
       }

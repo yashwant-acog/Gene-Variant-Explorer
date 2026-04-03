@@ -139,6 +139,8 @@ export interface Variant {
         type: string;
         variant_id: number | null;
     };
+    acmgClassification?: string;
+    clinvarClassification?: string;
 }
 
 export interface CustomVariant {

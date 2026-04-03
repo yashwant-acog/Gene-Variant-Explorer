@@ -39,7 +39,7 @@ export default function VariantPage({ params }: Props) {
   useEffect(() => {
     async function fetchMatches() {
       // Use genomic ID from URL params, fallback to customVariant if not provided
-      const genomicId = genomicIdFromParam || (customVariant?.Genomic_ID || "");
+      const genomicId = genomicIdFromParam || customVariant?.Genomic_ID || "";
       const cdnaToMatch = cDNA;
 
       if (genomicId && cdnaToMatch) {
@@ -48,8 +48,8 @@ export default function VariantPage({ params }: Props) {
           // Call our Next.js API route instead of ClinVar directly
           const response = await fetch(
             `/api/clinvar/match?genomicId=${encodeURIComponent(
-              genomicId
-            )}&cdnaToMatch=${encodeURIComponent(cdnaToMatch)}`
+              genomicId,
+            )}&cdnaToMatch=${encodeURIComponent(cdnaToMatch)}`,
           );
           if (!response.ok) {
             throw new Error("Failed to fetch ClinVar data");
@@ -111,60 +111,60 @@ export default function VariantPage({ params }: Props) {
       alleleNumber: parseSci(customVariant["Allele Number"]),
 
       alleleCountAfrican: parseSci(
-        customVariant["Allele Count African/African American"]
+        customVariant["Allele Count African/African American"],
       ),
       alleleNumberAfrican: parseSci(
-        customVariant["Allele Number African/African American"]
+        customVariant["Allele Number African/African American"],
       ),
 
       alleleCountAdmixedAmerican: parseSci(
-        customVariant["Allele Count Admixed American"]
+        customVariant["Allele Count Admixed American"],
       ),
       alleleNumberAdmixedAmerican: parseSci(
-        customVariant["Allele Number Admixed American"]
+        customVariant["Allele Number Admixed American"],
       ),
 
       alleleCountAshkenaziJewish: parseSci(
-        customVariant["Allele Count Ashkenazi Jewish"]
+        customVariant["Allele Count Ashkenazi Jewish"],
       ),
       alleleNumberAshkenaziJewish: parseSci(
-        customVariant["Allele Number Ashkenazi Jewish"]
+        customVariant["Allele Number Ashkenazi Jewish"],
       ),
 
       alleleCountEastAsian: parseSci(customVariant["Allele Count East Asian"]),
       alleleNumberEastAsian: parseSci(
-        customVariant["Allele Number East Asian"]
+        customVariant["Allele Number East Asian"],
       ),
 
       alleleCountEuropeanFinnish: parseSci(
-        customVariant["Allele Count European (Finnish)"]
+        customVariant["Allele Count European (Finnish)"],
       ),
       alleleNumberEuropeanFinnish: parseSci(
-        customVariant["Allele Number European (Finnish)"]
+        customVariant["Allele Number European (Finnish)"],
       ),
 
       alleleCountMiddleEastern: parseSci(
-        customVariant["Allele Count Middle Eastern"]
+        customVariant["Allele Count Middle Eastern"],
       ),
       alleleNumberMiddleEastern: parseSci(
-        customVariant["Allele Number Middle Eastern"]
+        customVariant["Allele Number Middle Eastern"],
       ),
 
       alleleCountEuropeanNonFinnish: parseSci(
-        customVariant["Allele Count European (non-Finnish)"]
+        customVariant["Allele Count European (non-Finnish)"],
       ),
       alleleNumberEuropeanNonFinnish: parseSci(
-        customVariant["Allele Number European (non-Finnish)"]
+        customVariant["Allele Number European (non-Finnish)"],
       ),
 
       alleleCountAmish: parseSci(customVariant["Allele Count Amish"]),
       alleleNumberAmish: parseSci(customVariant["Allele Number Amish"]),
 
       alleleCountSouthAsian: parseSci(
-        customVariant["Allele Count South Asian"]
+        customVariant["Allele Count South Asian"],
       ),
       alleleNumberSouthAsian: parseSci(
-        customVariant["Allele Number South Asian"]
+        customVariant["Allele Number South Asian"],
       ),
 
       sourceType: "custom",
@@ -214,10 +214,10 @@ export default function VariantPage({ params }: Props) {
   // Calculate classification based on points
   const getClassificationByPoints = (pointsStr?: string) => {
     const pts = parseFloat(pointsStr || "0");
-    if (isNaN(pts)) return "VUS";
+    if (isNaN(pts)) return "Uncertain Significance";
     if (pts >= 10) return "Pathogenic";
     if (pts >= 6) return "Likely Pathogenic";
-    if (pts >= -5) return "VUS";
+    if (pts >= -5) return "Uncertain Significance";
     if (pts >= -9) return "Likely Benign";
     return "Benign";
   };
@@ -229,11 +229,11 @@ export default function VariantPage({ params }: Props) {
     displayClassification === "Pathogenic" ||
     displayClassification === "Likely Pathogenic"
       ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-400/10 dark:text-red-400 dark:border-red-400/20"
-      : displayClassification === "VUS"
-      ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/20"
-      : displayClassification.includes("Benign")
-      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:border-emerald-400/20"
-      : "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
+      : displayClassification === "Uncertain Significance"
+        ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/20"
+        : displayClassification.includes("Benign")
+          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:border-emerald-400/20"
+          : "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
 
   const popDefinitions = useMemo(
     () => [
@@ -283,7 +283,7 @@ export default function VariantPage({ params }: Props) {
         numField: "Allele Number Amish",
       },
     ],
-    []
+    [],
   );
 
   const popDistributions = useMemo(() => {

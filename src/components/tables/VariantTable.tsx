@@ -4,20 +4,26 @@ import { Variant } from "@/lib/types";
 export const CLINVAR_COLUMNS = [
   { key: "Variation", label: "Variation" },
   { key: "genomicID", label: "Genomic ID" },
-  // { key: "Protein_change", label: "Protein/HGVS" },
+  { key: "Protein_change", label: "Protein change" },
   { key: "rsID", label: "rsID" },
-  { key: "clinvarGermlineClassification", label: "Classification" },
-  { key: "conditions", label: "Clinical Conditions" },
+  { key: "clinvarClassification", label: "ClinVar Classification" },
+  { key: "acmgClassification", label: "ACMG Classification" },
+  { key: "conditions", label: "ClinVar Conditions" },
+  { key: "customCondition", label: "Custom Condition" },
+  { key: "clinvar", label: "ClinVar" },
+  { key: "gnomad", label: "gnomAD" },
 ];
 
 interface VariantTableProps {
   variants: Variant[];
   visibleColumns?: string[];
+  gene: string;
 }
 
 export default function VariantTable({
   variants,
   visibleColumns,
+  gene,
 }: VariantTableProps) {
   if (variants.length === 0) {
     return (
@@ -45,10 +51,73 @@ export default function VariantTable({
     );
   }
 
+  function getACMGColor(classification: string) {
+    switch (classification.toLowerCase()) {
+      case "benign":
+        return "bg-emerald-500 text-white";
+      case "likely benign":
+        return "bg-emerald-400 text-white";
+      case "benign/likely benign":
+        return "bg-emerald-400 text-white";
+      case "uncertain significance":
+        return "bg-amber-400 text-black";
+      case "likely pathogenic":
+        return "bg-orange-500 text-white";
+      case "pathogenic/likely pathogenic":
+        return "bg-orange-500 text-white";
+      case "pathogenic":
+        return "bg-red-600 text-white";
+      default:
+        return "bg-gray-400 text-white";
+    }
+  }
+
   // Filter columns based on visibility
   const columns = visibleColumns
     ? CLINVAR_COLUMNS.filter((col) => visibleColumns.includes(col.key))
     : CLINVAR_COLUMNS;
+
+  const AA_MAP: Record<string, string> = {
+    Ala: "A",
+    Arg: "R",
+    Asn: "N",
+    Asp: "D",
+    Cys: "C",
+    Gln: "Q",
+    Glu: "E",
+    Gly: "G",
+    His: "H",
+    Ile: "I",
+    Leu: "L",
+    Lys: "K",
+    Met: "M",
+    Phe: "F",
+    Pro: "P",
+    Ser: "S",
+    Thr: "T",
+    Trp: "W",
+    Tyr: "Y",
+    Val: "V",
+    // Ambiguous/Special
+    Asx: "B",
+    Glx: "Z",
+    Xaa: "X",
+    Xle: "J",
+    Ter: "*",
+  };
+
+  const formatProteinConsequence = (consequence: string) => {
+    if (!consequence || !consequence.includes("p.")) return consequence;
+
+    // Extract the part starting from 'p.' (e.g., p.Gln485Arg)
+    const pPart = consequence.split("p.")[1] || consequence;
+
+    // Use regex to replace 3-letter codes with 1-letter codes
+    // We look for 3 letters followed by numbers or ending strings
+    return pPart.replace(/([A-Z][a-z]{2})/g, (match) => {
+      return AA_MAP[match] || match; // Fallback to original if not found
+    });
+  };
 
   return (
     <div className="flex-1 w-full border border-gray-200 dark:border-scientific-border rounded-lg shadow-sm  flex flex-col">
@@ -62,7 +131,7 @@ export default function VariantTable({
                 if (col.key === "Protein_change") className += " w-40";
                 if (col.key === "genomicID")
                   className +=
-                    " sticky left-0 bg-gray-50 dark:bg-scientific-panel/90 z-10 backdrop-blur w-36";
+                    "left-0 bg-gray-50 dark:bg-scientific-panel/90 z-10 backdrop-blur w-36";
                 if (col.key === "af" || col.key === "scores")
                   className = className.replace("text-left", "text-right");
                 if (col.key === "action")
@@ -94,7 +163,7 @@ export default function VariantTable({
                         {cdna ? (
                           <Link
                             href={`/variant/${encodeURIComponent(
-                              cdna
+                              cdna,
                             )}?genomicId=${genomicId}`}
                             className="text-blue-600 dark:text-blue-400 font-medium"
                           >
@@ -106,9 +175,7 @@ export default function VariantTable({
                             </div>
                           </Link>
                         ) : (
-                          <div
-                            className="text-blue-600 dark:text-blue-400 font-medium"
-                          >
+                          <div className="text-blue-600 dark:text-blue-400 font-medium">
                             <div>
                               <span className="text-sm text-gray-400">
                                 {variant?.clinvar?.rcv?.preferred_name}
@@ -120,18 +187,19 @@ export default function VariantTable({
                     );
                   }
 
-                  // if (col.key === "Protein_change") {
-                  //   return (
-                  //     <td key={col.key} className={cellClassName}>
-                  //       <div className="font-medium text-gray-800 dark:text-gray-200">
-                  //         {variant.proteinConsequence}
-                  //       </div>
-                  //       <div className="text-xs text-gray-500 dark:text-gray-400">
-                  //         {variant.hgvsConsequence}
-                  //       </div>
-                  //     </td>
-                  //   );
-                  // }
+                  if (col.key === "Protein_change") {
+                    const formattedValue = formatProteinConsequence(
+                      variant.proteinConsequence,
+                    );
+
+                    return (
+                      <td key={col.key} className={cellClassName}>
+                        <div className="font-medium text-gray-800 dark:text-gray-200">
+                          {formattedValue}
+                        </div>
+                      </td>
+                    );
+                  }
 
                   if (col.key === "rsID") {
                     return (
@@ -154,7 +222,7 @@ export default function VariantTable({
                         key={col.key}
                         className={`${cellClassName} font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap left-0 bg-white dark:bg-scientific-bg group-hover:bg-gray-50/50 dark:group-hover:bg-[#152033] z-10`}
                       >
-                        {variant.genomicID}
+                        {(variant as any).customGenomicID || variant.genomicID}
                         <div className="text-[10px] text-gray-400 mt-0.5">
                           {variant.sourceType === "clinvar"
                             ? "ClinVar"
@@ -164,52 +232,152 @@ export default function VariantTable({
                     );
                   }
 
-                  if (col.key === "clinvarGermlineClassification") {
+                  if (
+                    col.key === "clinvarClassification" ||
+                    col.key === "acmgClassification"
+                  ) {
+                    const classification = (variant as any)[col.key] || "";
+
+                    // Regex to parse things like "Benign(4) Uncertain Significance(3)"
+                    // It looks for a label, optionally followed by (digits)
+                    const parts = classification.split(" || ");
+                    const finalParts =
+                      parts.length > 0 && parts[0] !== ""
+                        ? parts
+                        : [classification];
+
                     return (
                       <td
                         key={col.key}
                         className={`${cellClassName} whitespace-nowrap`}
                       >
-                        <span
-                          className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full border 
-                        ${
-                          variant.clinvarGermlineClassification ===
-                            "Pathogenic" ||
-                          variant.clinvarGermlineClassification ===
-                            "Likely Pathogenic"
-                            ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-400/10 dark:text-red-400 dark:border-red-400/20"
-                            : variant.clinvarGermlineClassification === "VUS"
-                            ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/20"
-                            : variant.clinvarGermlineClassification.includes(
-                                "Benign"
-                              )
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:border-emerald-400/20"
-                            : "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
-                        }`}
-                        >
-                          {variant.clinvarGermlineClassification}
-                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {finalParts.map((part: string, idx: number) => {
+                            if (!part) return null;
+                            // Extract just the label part for colors (e.g. "Benign" from "Benign(4)")
+                            const labelMatch = part.match(/^([^(]+)/);
+                            const label = labelMatch
+                              ? labelMatch[1].trim()
+                              : part;
+
+                            return (
+                              <span
+                                key={idx}
+                                className={`px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap border ${getACMGColor(
+                                  label,
+                                )}`}
+                              >
+                                {part.toUpperCase()}
+                              </span>
+                            );
+                          })}
+                          {!classification && (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
                       </td>
                     );
                   }
 
                   if (col.key === "conditions") {
+                    const conditions = variant.conditions || [];
                     return (
                       <td key={col.key} className={cellClassName}>
-                        {variant.conditions && variant.conditions.length > 0 ? (
-                          <div className="flex flex-wrap gap-1 max-w-[250px]">
-                            {variant.conditions.map(
-                              (condition: string, idx: number) => (
-                                <span
-                                  key={idx}
-                                  className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 px-2 py-0.5 rounded text-[10px] font-medium border border-blue-100 dark:border-blue-800/30 whitespace-nowrap"
-                                >
-                                  {condition}
-                                </span>
-                              )
-                            )}
+                        <div className="flex flex-wrap gap-1 max-w-[250px]">
+                          {conditions.map((cond, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] whitespace-nowrap dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                            >
+                              {cond}
+                            </span>
+                          ))}
+                          {conditions.length === 0 && (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  }
+
+                  if (col.key === "customCondition") {
+                    const cond = (variant as any).customCondition;
+                    return (
+                      <td key={col.key} className={cellClassName}>
+                        {cond ? (
+                          <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-[10px] whitespace-nowrap dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
+                            {cond}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                    );
+                  }
+
+                  if (col.key === "clinvar") {
+                    const cDNA =
+                      variant.transcript || variant.hgvsConsequence || "";
+                    if (!cDNA || cDNA === "N/A") {
+                      return (
+                        <td key={col.key} className={cellClassName}>
+                          -
+                        </td>
+                      );
+                    }
+                    const term = encodeURIComponent(
+                      `"${cDNA}"[VARNAME] AND "${gene}"[GENE]`,
+                    );
+                    return (
+                      <td key={col.key} className={cellClassName}>
+                        <Link
+                          href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${cDNA}&gene=${gene}&term=${term}`}
+                          className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                          target="_blank"
+                        >
+                          <div className="h-4 w-4 ml-1">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+                            </svg>
                           </div>
-                        ) : null}
+                        </Link>
+                      </td>
+                    );
+                  }
+
+                  if (col.key === "gnomad") {
+                    const genomicID = (variant as any).customGenomicID || "";
+                    if (!genomicID) {
+                      return (
+                        <td key={col.key} className={cellClassName}>
+                          -
+                        </td>
+                      );
+                    }
+                    return (
+                      <td key={col.key} className={cellClassName}>
+                        <Link
+                          href={`https://gnomad.broadinstitute.org/variant/${genomicID.replaceAll(
+                            ":",
+                            "-",
+                          )}?dataset=gnomad_r4`}
+                          className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                          target="_blank"
+                        >
+                          <div className="h-4 w-4 ml-1">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+                            </svg>
+                          </div>
+                        </Link>
                       </td>
                     );
                   }

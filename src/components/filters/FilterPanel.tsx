@@ -18,16 +18,9 @@ export interface FilterState {
 interface FilterPanelProps {
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
-  availableData: Variant[];
-  viewMode?: "clinvar" | "custom";
 }
 
-export default function FilterPanel({
-  filters,
-  setFilters,
-  availableData,
-  viewMode = "custom",
-}: FilterPanelProps) {
+export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
   // Internal state for pending filters
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters);
 
@@ -36,48 +29,18 @@ export default function FilterPanel({
     setPendingFilters(filters);
   }, [filters]);
 
-  // Extract unique values for dynamic filter options
-  // const uniqueClassifications = useMemo(() => {
-  //     const set = new Set(availableData.map((v) => v.clinvarGermlineClassification));
-  //     return Array.from(set).filter(Boolean).sort();
-  // }, [availableData]);
-
-  const uniqueClassifications = [
-    "Pathogenic",
-    "Likely Pathogenic",
-    "VUS",
-    "Likely Benign",
-    "Benign",
-    // "Pathogenic/Likely pathogenic",
-    // "Conflicting interpretations of pathogenicity",
-    // "Uncertain significance",
-    // "Benign/Likely benign",
-    // "not provided",
-    // "other",
-  ];
-
   const ClinvarClassifications = [
     "Pathogenic",
+    "Likely Pathogenic",
     "Pathogenic/Likely pathogenic",
     "Conflicting interpretations of pathogenicity",
     "Uncertain significance",
     "Benign/Likely benign",
+    "Likely Benign",
     "Benign",
     "other",
     "not provided",
   ];
-
-  const uniqueVepAnnotations = useMemo(() => {
-    const set = new Set(availableData.map((v) => v.vepAnnotation));
-    return Array.from(set).filter(Boolean).sort();
-  }, [availableData]);
-
-  const uniqueMutationTypes = useMemo(() => {
-    // Since we don't have Mutation_type in Variant interface directly for now,
-    // we'll use established common types or extract from Custom dataset if available.
-    // For FGFR3 specifically, these are the types:
-    return ["Missense", "Nonsense", "Synonymous"];
-  }, []);
 
   const handleClassificationChange = (cls: string) => {
     setPendingFilters((prev) => {
@@ -87,30 +50,6 @@ export default function FilterPanel({
         classifications: isSelected
           ? prev.classifications.filter((c) => c !== cls)
           : [...prev.classifications, cls],
-      };
-    });
-  };
-
-  const handleVepChange = (vep: string) => {
-    setPendingFilters((prev) => {
-      const isSelected = prev.vepAnnotations.includes(vep);
-      return {
-        ...prev,
-        vepAnnotations: isSelected
-          ? prev.vepAnnotations.filter((v) => v !== vep)
-          : [...prev.vepAnnotations, vep],
-      };
-    });
-  };
-
-  const handleMutationTypeChange = (mt: string) => {
-    setPendingFilters((prev) => {
-      const isSelected = prev.mutationTypes.includes(mt);
-      return {
-        ...prev,
-        mutationTypes: isSelected
-          ? prev.mutationTypes.filter((type) => type !== mt)
-          : [...prev.mutationTypes, mt],
       };
     });
   };
@@ -166,140 +105,77 @@ export default function FilterPanel({
 
       <div className="px-4 py-1 mt-2">
         {/* Classifications - Show for both ClinVar and Custom */}
-        {viewMode === "clinvar" ? (
-          <>
-            {ClinvarClassifications.length > 0 && (
-              <AccordionSection title="Classification" defaultOpen={true}>
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-2 scrollbar-thin">
-                  {ClinvarClassifications.map((cls) => (
-                    <label
-                      key={cls}
-                      className="flex items-center gap-3 cursor-pointer group"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pendingFilters.classifications.includes(cls)}
-                        onChange={() => handleClassificationChange(cls)}
-                        className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
-                        {cls}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </AccordionSection>
-            )}
-            <div className="h-[0.5px] bg-gray-400 mb-4 mt-[-16px]"></div>
-          </>
-        ) : (
-          <>
-            {uniqueClassifications.length > 0 && (
-              <AccordionSection title="Classification" defaultOpen={true}>
-                <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-thin">
-                  {uniqueClassifications.map((cls) => (
-                    <label
-                      key={cls}
-                      className="flex items-center gap-3 cursor-pointer group"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={pendingFilters.classifications.includes(cls)}
-                        onChange={() => handleClassificationChange(cls)}
-                        className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
-                        {cls}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </AccordionSection>
-            )}
-          </>
+        {ClinvarClassifications.length > 0 && (
+          <AccordionSection title="Classification" defaultOpen={true}>
+            <div className="space-y-2 max-h-[400px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
+              {ClinvarClassifications.map((cls) => (
+                <label
+                  key={cls}
+                  className="flex items-center gap-3 cursor-pointer group"
+                >
+                  <input
+                    type="checkbox"
+                    checked={pendingFilters.classifications.includes(cls)}
+                    onChange={() => handleClassificationChange(cls)}
+                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
+                    {cls}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </AccordionSection>
         )}
+        <div className="h-[0.5px] bg-gray-400 mt-[-20px]"></div>
       </div>
 
-      {/* Show other filters only for Custom table */}
-      {viewMode === "custom" && (
-        <>
-          <div className="h-[0.5px] bg-gray-400 mx-4 mb-4 mt-1"></div>
-
-          <div className="px-4 py-1">
-            {/* Mutation Types */}
-            <AccordionSection title="Mutation Type" defaultOpen={true}>
-              <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-thin">
-                {uniqueMutationTypes.map((mt) => (
-                  <label
-                    key={mt}
-                    className="flex items-center gap-3 cursor-pointer group"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={pendingFilters.mutationTypes.includes(mt)}
-                      onChange={() => handleMutationTypeChange(mt)}
-                      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
-                      {mt}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </AccordionSection>
-          </div>
-          <div className="h-[0.5px] bg-gray-400 mx-4 mb-4 mt-1"></div>
-
-          <div className="px-4 py-1">
-            <AccordionSection title="Numeric Scores" defaultOpen={true}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1 font-medium">
-                    REVEL Score Range
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      placeholder="Min"
-                      value={pendingFilters.revelMin}
-                      onChange={(e) =>
-                        setPendingFilters({
-                          ...pendingFilters,
-                          revelMin: e.target.value
-                            ? Number(e.target.value)
-                            : "",
-                        })
-                      }
-                      className="w-full text-sm px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                      step="0.01"
-                      min="0"
-                      max="1"
-                    />
-                    <span className="text-gray-400">-</span>
-                    <input
-                      type="number"
-                      placeholder="Max"
-                      value={pendingFilters.revelMax}
-                      onChange={(e) =>
-                        setPendingFilters({
-                          ...pendingFilters,
-                          revelMax: e.target.value
-                            ? Number(e.target.value)
-                            : "",
-                        })
-                      }
-                      className="w-full text-sm px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                      step="0.01"
-                      min="0"
-                      max="1"
-                    />
-                  </div>
+      <>
+        {/* <div className="px-4 py-1">
+          <AccordionSection title="Numeric Scores" defaultOpen={true}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1 font-medium">
+                  REVEL Score Range
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={pendingFilters.revelMin}
+                    onChange={(e) =>
+                      setPendingFilters({
+                        ...pendingFilters,
+                        revelMin: e.target.value ? Number(e.target.value) : "",
+                      })
+                    }
+                    className="w-full text-sm px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    step="0.01"
+                    min="0"
+                    max="1"
+                  />
+                  <span className="text-gray-400">-</span>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={pendingFilters.revelMax}
+                    onChange={(e) =>
+                      setPendingFilters({
+                        ...pendingFilters,
+                        revelMax: e.target.value ? Number(e.target.value) : "",
+                      })
+                    }
+                    className="w-full text-sm px-2 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    step="0.01"
+                    min="0"
+                    max="1"
+                  />
                 </div>
               </div>
-            </AccordionSection>
-          </div>
-        </>
-      )}
+            </div>
+          </AccordionSection>
+        </div> */}
+      </>
 
       {/* Apply Filter Button - Sticky Bottom */}
       <div className="p-4 border-t border-gray-200 dark:border-scientific-border bg-white/90 dark:bg-scientific-panel/90 backdrop-blur sticky bottom-0 z-50 mt-auto">

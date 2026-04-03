@@ -7,15 +7,25 @@ export const CUSTOM_COLUMNS = [
   { key: "Genomic_ID", label: "Genomic ID", group: "Identity" },
   { key: "Protein_change", label: "Protein Change", group: "Identity" },
   { key: "condition", label: "Conditions", group: "Clinical" },
+  {
+    key: "clinvarConditions",
+    label: "ClinVar Conditions",
+    group: "Clinical",
+  },
   { key: "REVEL", label: "REVEL", group: "Predictive" },
   { key: "VEST4_score", label: "VEST4", group: "Predictive" },
   { key: "MutPred_score", label: "MutPred", group: "Predictive" },
   { key: "BayesDel_addAF_score", label: "BayesDel", group: "Predictive" },
-  { key: "ACMG", label: "ACMG", group: "Predictive" },
+  { key: "ACMG", label: "ACMG Score", group: "Predictive" },
   {
-    key: "ACMG_classification",
+    key: "acmgClassification",
     label: "ACMG Classification",
-    group: "Predictive",
+    group: "Clinical",
+  },
+  {
+    key: "clinvarClassification",
+    label: "ClinVar Classification",
+    group: "Clinical",
   },
   { key: "Mutation_type", label: "Mutation", group: "Functional" },
   { key: "Functional", label: "Functional", group: "Functional" },
@@ -38,11 +48,13 @@ export const CUSTOM_COLUMNS = [
 interface CustomVariantTableProps {
   variants: CustomVariant[];
   visibleColumns?: string[];
+  gene: string;
 }
 
 export default function CustomVariantTable({
   variants,
   visibleColumns,
+  gene,
 }: CustomVariantTableProps) {
   if (!variants || variants.length === 0) {
     return (
@@ -61,26 +73,22 @@ export default function CustomVariantTable({
   function getACMGColor(classification: string) {
     switch (classification.toLowerCase()) {
       case "benign":
-        return "bg-emerald-500 text-white";
+        return "bg-emerald-500 text-white border-black";
       case "likely benign":
-        return "bg-emerald-400 text-emerald-900";
-      case "vus":
+        return "bg-emerald-400 text-white border-black";
+      case "benign/likely benign":
+        return "bg-emerald-400 text-white border-black";
       case "uncertain significance":
-        return "bg-amber-400 text-amber-900";
+        return "bg-amber-400 text-black border-black";
       case "likely pathogenic":
-        return "bg-orange-500 text-white";
+        return "bg-orange-500 text-white border-black";
+      case "pathogenic/likely pathogenic":
+        return "bg-orange-500 text-white border-black";
       case "pathogenic":
-        return "bg-red-600 text-white";
+        return "bg-red-600 text-white border-black";
       default:
-        return "bg-gray-400 text-white";
+        return "bg-gray-400 text-black";
     }
-  }
-  function getACMGClassification(points: number): string {
-    if (points >= 10) return "pathogenic";
-    if (points >= 6) return "likely pathogenic";
-    if (points >= -5) return "vus";
-    if (points >= -9) return "likely benign";
-    return "benign";
   }
 
   return (
@@ -148,7 +156,7 @@ export default function CustomVariantTable({
                     renderedValue = (
                       <Link
                         href={`/variant/${encodeURIComponent(
-                          v.cDNA_change
+                          v.cDNA_change,
                         )}?genomicId=${genomicIdEncoded}`}
                         className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
                       >
@@ -157,21 +165,62 @@ export default function CustomVariantTable({
                     );
                   }
 
-                  if (col.key === "ACMG_classification") {
-                    const points = parseFloat(v.ACMG);
-                    const classification = isNaN(points)
-                      ? null
-                      : getACMGClassification(points);
+                  if (
+                    col.key === "acmgClassification" ||
+                    col.key === "clinvarClassification"
+                  ) {
+                    const classification = (v as any)[col.key] || "";
 
-                    renderedValue = classification ? (
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap border ${getACMGColor(
-                          classification
-                        )}`}
-                      >
-                        {classification.toUpperCase()}
-                      </span>
-                    ) : null;
+                    const parts = classification.split(" || ");
+                    const finalParts =
+                      parts.length > 0 && parts[0] !== ""
+                        ? parts
+                        : [classification];
+
+                    renderedValue = (
+                      <div className="flex flex-wrap gap-1">
+                        {finalParts.map((part: string, idx: number) => {
+                          if (!part) return null;
+                          const labelMatch = part.match(/^([^(]+)/);
+                          const label = labelMatch
+                            ? labelMatch[1].trim()
+                            : part;
+
+                          return (
+                            <span
+                              key={idx}
+                              className={`px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap border ${getACMGColor(
+                                label,
+                              )}`}
+                            >
+                              {part.toUpperCase()}
+                            </span>
+                          );
+                        })}
+                        {!classification && (
+                          <span className="text-gray-400 font-sans">-</span>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  if (col.key === "clinvarConditions") {
+                    const conditions = (v as any).clinvarConditions || [];
+                    renderedValue = (
+                      <div className="flex flex-wrap gap-1">
+                        {conditions.map((cond: string, idx: number) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] whitespace-nowrap dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                          >
+                            {cond}
+                          </span>
+                        ))}
+                        {conditions.length === 0 && (
+                          <span className="text-gray-400 font-sans">-</span>
+                        )}
+                      </div>
+                    );
                   }
 
                   if (col.key === "Functional") {
@@ -319,51 +368,63 @@ export default function CustomVariantTable({
                   }
 
                   if (col.key === "clinvar") {
-                    const term = encodeURIComponent(
-                      `"${v.cDNA_change}"[VARNAME] AND "${"fgfr3"}"[GENE]`
-                    );
-                    renderedValue = (
-                      <Link
-                        href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${
-                          v.cDNA_change
-                        }&gene=${"fgfr3"}&term=${term}`}
-                        className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
-                        target="_blank"
-                      >
-                        <div className="h-4 w-4 ml-1">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                          >
-                            <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
-                          </svg>
-                        </div>
-                      </Link>
-                    );
+                    if (!(v as any).clinvarClassification) {
+                      renderedValue = (
+                        <span className="text-gray-400 font-sans">-</span>
+                      );
+                    } else {
+                      const term = encodeURIComponent(
+                        `"${v.cDNA_change}"[VARNAME] AND "${gene}"[GENE]`,
+                      );
+                      renderedValue = (
+                        <Link
+                          href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${
+                            v.cDNA_change
+                          }&gene=${gene}&term=${term}`}
+                          className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                          target="_blank"
+                        >
+                          <div className="h-4 w-4 ml-1">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+                            </svg>
+                          </div>
+                        </Link>
+                      );
+                    }
                   }
 
                   if (col.key === "gnomad") {
-                    renderedValue = (
-                      <Link
-                        href={`https://gnomad.broadinstitute.org/variant/${v.Genomic_ID?.replaceAll(
-                          ":",
-                          "-"
-                        )}?dataset=gnomad_r4`}
-                        className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
-                        target="_blank"
-                      >
-                        <div className="h-4 w-4 ml-1">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                          >
-                            <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
-                          </svg>
-                        </div>
-                      </Link>
-                    );
+                    if (!(v as any).clinvarClassification) {
+                      renderedValue = (
+                        <span className="text-gray-400 font-sans">-</span>
+                      );
+                    } else {
+                      renderedValue = (
+                        <Link
+                          href={`https://gnomad.broadinstitute.org/variant/${v.Genomic_ID?.replaceAll(
+                            ":",
+                            "-",
+                          )}?dataset=gnomad_r4`}
+                          className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                          target="_blank"
+                        >
+                          <div className="h-4 w-4 ml-1">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+                            </svg>
+                          </div>
+                        </Link>
+                      );
+                    }
                   }
 
                   return (

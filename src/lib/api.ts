@@ -6,18 +6,36 @@ import { Variant } from "./types";
 function mapApiHitToVariant(hit: any): Variant {
     const c = hit.clinvar || {};
     const hgvs = c.hgvs || {};
-    const rcv = Array.isArray(c.rcv) ? c.rcv[0] : (c.rcv || {});
+    const rcvList = Array.isArray(c.rcv) ? c.rcv : (c.rcv ? [c.rcv] : []);
+    const firstRcv = rcvList.length > 0 ? rcvList[0] : {};
 
-    // Extract conditions
-    let disease = "N/A";
-    let conditions: string[] = [];
-    if (rcv.conditions) {
-        const condList = Array.isArray(rcv.conditions) ? rcv.conditions : [rcv.conditions];
-        conditions = condList.map((c: any) => c.name).filter(Boolean);
-        if (conditions.length > 0) {
-            disease = conditions[0];
+    // Extract conditions and aggregated clinical significance
+    const sigCounts: Record<string, number> = {};
+    const conditionsSet = new Set<string>();
+    
+    rcvList.forEach((rcvItem: any) => {
+        const sig = rcvItem.clinical_significance;
+        if (sig) {
+            sigCounts[sig] = (sigCounts[sig] || 0) + 1;
         }
-    }
+        
+        if (rcvItem.conditions) {
+            const condList = Array.isArray(rcvItem.conditions) ? [rcvItem.conditions] : (Array.isArray(rcvItem.conditions.name) ? rcvItem.conditions.name.map((n: string) => ({ name: n })) : [rcvItem.conditions]);
+            // Re-checking how conditions are structured. Usually it's { name: "...", ... } or array of such.
+            const normalizedCondList = Array.isArray(rcvItem.conditions) ? rcvItem.conditions : [rcvItem.conditions];
+            normalizedCondList.forEach((cond: any) => {
+                if (cond.name) conditionsSet.add(cond.name);
+            });
+        }
+    });
+
+    const conditions = Array.from(conditionsSet);
+    const disease = conditions.length > 0 ? conditions[0] : "N/A";
+    
+    // Format: Benign(4) Uncertain Significance(3)
+    const aggregatedSig = Object.entries(sigCounts)
+        .map(([sig, count]) => (count > 1 ? `${sig}(${count})` : sig))
+        .join(" || ") || "Uncertain Significance";
 
     return {
         id: hit._id,
@@ -33,7 +51,7 @@ function mapApiHitToVariant(hit: any): Variant {
         hgvsConsequence: hgvs.coding?.[0] || "N/A",
         proteinConsequence: hgvs.protein?.[0] || hgvs.coding?.[0] || "N/A",
         vepAnnotation: "missense_variant",
-        clinvarGermlineClassification: rcv.clinical_significance || "VUS",
+        clinvarGermlineClassification: aggregatedSig,
         clinvarVariationID: String(c.variant_id || ""),
         alleleFrequency: 0,
         sift: 0,
@@ -73,18 +91,18 @@ function mapApiHitToVariant(hit: any): Variant {
             },
             omim: c.omim || "",
             rcv: {
-                accession: rcv.accession || "",
-                clinical_significance: rcv.clinical_significance || "",
+                accession: firstRcv.accession || "",
+                clinical_significance: firstRcv.clinical_significance || "",
                 conditions: {
-                    identifiers: rcv.conditions?.identifiers || {},
-                    name: rcv.conditions?.name || "",
-                    synonyms: rcv.conditions?.synonyms || []
+                    identifiers: firstRcv.conditions?.identifiers || {},
+                    name: firstRcv.conditions?.name || "",
+                    synonyms: firstRcv.conditions?.synonyms || []
                 },
-                last_evaluated: rcv.last_evaluated || "",
-                number_submitters: rcv.number_submitters || 0,
-                origin: rcv.origin || "",
-                preferred_name: rcv.preferred_name || "",
-                review_status: rcv.review_status || ""
+                last_evaluated: firstRcv.last_evaluated || "",
+                number_submitters: firstRcv.number_submitters || 0,
+                origin: firstRcv.origin || "",
+                preferred_name: firstRcv.preferred_name || "",
+                review_status: firstRcv.review_status || ""
             },
             ref: c.ref || "",
             rsid: c.rsid || "",
@@ -97,21 +115,28 @@ function mapApiHitToVariant(hit: any): Variant {
 /**
  * Fetches ClinVar variants for a given gene symbol.
  */
-export async function fetchClinVarVariants(symbol: string): Promise<Variant[]> {
-    const url = `https://myvariant.info/v1/query?q=clinvar.gene.symbol:${symbol}&fields=clinvar&from=0&size=1000`;
-
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        if (!data.hits) return [];
-
-        return data.hits.map(mapApiHitToVariant);
-    } catch (error) {
-        console.error("Failed to fetch ClinVar data:", error);
-        return [];
+export async function fetchClinVarVariants(
+  symbol: string,
+  from: number = 0,
+  size: number = 1000
+): Promise<{ variants: Variant[]; total: number }> {
+  try {
+    const url = `https://myvariant.info/v1/query?q=clinvar.gene.symbol:${symbol}&fields=clinvar&from=${from}&size=${size}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.statusText}`);
     }
+
+    const data = await response.json();
+    const hits = data.hits || [];
+    const total = data.total || 0;
+
+    return {
+      variants: hits.map(mapApiHitToVariant),
+      total,
+    };
+  } catch (error) {
+    console.error("Failed to fetch ClinVar data:", error);
+    return { variants: [], total: 0 };
+  }
 }
