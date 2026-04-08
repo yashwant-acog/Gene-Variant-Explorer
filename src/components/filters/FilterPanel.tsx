@@ -32,10 +32,8 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
   const ClinvarClassifications = [
     "Pathogenic",
     "Likely Pathogenic",
-    "Pathogenic/Likely pathogenic",
     "Conflicting interpretations of pathogenicity",
     "Uncertain significance",
-    "Benign/Likely benign",
     "Likely Benign",
     "Benign",
     "other",

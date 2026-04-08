@@ -373,14 +373,14 @@ export default function CustomVariantTable({
                         <span className="text-gray-400 font-sans">-</span>
                       );
                     } else {
+                      const cDNA =
+                        (v as any).clinvarTranscript || v.cDNA_change;
                       const term = encodeURIComponent(
-                        `"${v.cDNA_change}"[VARNAME] AND "${gene}"[GENE]`,
+                        `"${cDNA}"[VARNAME] AND "${gene}"[GENE]`,
                       );
                       renderedValue = (
                         <Link
-                          href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${
-                            v.cDNA_change
-                          }&gene=${gene}&term=${term}`}
+                          href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${cDNA}&gene=${gene}&term=${term}`}
                           className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
                           target="_blank"
                         >

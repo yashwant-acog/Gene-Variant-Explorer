@@ -333,6 +333,7 @@ export default function GeneDashboard() {
           conditions: v.conditions,
           variationID: v.clinvarVariationID,
           genomicID: v.genomicID,
+          transcript: v.transcript,
         });
       }
     });
@@ -395,6 +396,9 @@ export default function GeneDashboard() {
             clinvarConditions: clinvarLookupMap.get(
               normalizeCDNA(cv.cDNA_change),
             )?.conditions,
+            clinvarTranscript: clinvarLookupMap.get(
+              normalizeCDNA(cv.cDNA_change),
+            )?.transcript,
           };
         });
     }
@@ -611,8 +615,15 @@ export default function GeneDashboard() {
     setCurrentPage(1);
   }, [filters, searchQuery, viewMode, symbol, pageSize]);
 
+  const hasActiveFilters =
+    filters.classifications.length > 0 ||
+    filters.mutationTypes.length > 0 ||
+    searchQuery.trim() !== "";
+
   const displayTotal =
-    viewMode === "clinvar" ? clinvarTotal : filteredAndSortedVariants.length;
+    viewMode === "clinvar" && !hasActiveFilters
+      ? clinvarTotal
+      : filteredAndSortedVariants.length;
 
   const totalPages = Math.ceil(displayTotal / pageSize);
   const paginatedVariants = useMemo(() => {

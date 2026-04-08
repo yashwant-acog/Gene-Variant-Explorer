@@ -119,6 +119,37 @@ export default function VariantTable({
     });
   };
 
+  const formatClinVarGenomicID = (variant: Variant) => {
+    if (!variant.clinvar?.hgvs?.genomic) return "Not found";
+
+    const ncEntries = variant.clinvar.hgvs.genomic.filter((h) =>
+      h.startsWith("NC_"),
+    );
+    if (ncEntries.length === 0) return "Not found";
+
+    // Heuristic: GRCh38 usually has a higher version suffix (.12 vs .11)
+    const sorted = [...ncEntries].sort((a, b) => {
+      const vA = parseInt(a.split(":")[0]?.split(".")[1]) || 0;
+      const vB = parseInt(b.split(":")[0]?.split(".")[1]) || 0;
+      return vB - vA;
+    });
+
+    const target = sorted[0];
+
+    // Format: NC_000004.12:g.1805662G>T -> 4:1805662:G:T
+    // Regex matches chromosome, position, ref, and alternate alleles
+    const match = target.match(/NC_(\d+)\.\d+:g\.(\d+)([A-Z]+)>([A-Z]+)/);
+    if (match) {
+      const chr = parseInt(match[1], 10);
+      const pos = match[2];
+      const ref = match[3];
+      const alt = match[4];
+      return `${chr}:${pos}:${ref}:${alt}`;
+    }
+
+    return target;
+  };
+
   return (
     <div className="flex-1 w-full border border-gray-200 dark:border-scientific-border rounded-lg shadow-sm  flex flex-col">
       <div className="flex-1 max-h-[520px] overflow-y-auto">
@@ -222,7 +253,10 @@ export default function VariantTable({
                         key={col.key}
                         className={`${cellClassName} font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap left-0 bg-white dark:bg-scientific-bg group-hover:bg-gray-50/50 dark:group-hover:bg-[#152033] z-10`}
                       >
-                        {(variant as any).customGenomicID || variant.genomicID}
+                        {(variant as any).customGenomicID ||
+                          (variant.sourceType === "clinvar"
+                            ? formatClinVarGenomicID(variant)
+                            : variant.genomicID)}
                         <div className="text-[10px] text-gray-400 mt-0.5">
                           {variant.sourceType === "clinvar"
                             ? "ClinVar"
@@ -334,6 +368,9 @@ export default function VariantTable({
                           href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${cDNA}&gene=${gene}&term=${term}`}
                           className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
                           target="_blank"
+                          onClick={() =>
+                            console.log("right = ", cDNA, gene, term)
+                          }
                         >
                           <div className="h-4 w-4 ml-1">
                             <svg

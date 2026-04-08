@@ -15,13 +15,16 @@ function mapApiHitToVariant(hit: any): Variant {
     
     rcvList.forEach((rcvItem: any) => {
         const sig = rcvItem.clinical_significance;
-        if (sig) {
+        
+        // Only consider the significance if the origin is germline
+        const isGermline = (rcvItem.origin || "").toLowerCase() === "germline" || 
+                           (Array.isArray(rcvItem.origin) && rcvItem.origin.some((o: string) => (o || "").toLowerCase() === "germline"));
+
+        if (sig && isGermline) {
             sigCounts[sig] = (sigCounts[sig] || 0) + 1;
         }
         
         if (rcvItem.conditions) {
-            const condList = Array.isArray(rcvItem.conditions) ? [rcvItem.conditions] : (Array.isArray(rcvItem.conditions.name) ? rcvItem.conditions.name.map((n: string) => ({ name: n })) : [rcvItem.conditions]);
-            // Re-checking how conditions are structured. Usually it's { name: "...", ... } or array of such.
             const normalizedCondList = Array.isArray(rcvItem.conditions) ? rcvItem.conditions : [rcvItem.conditions];
             normalizedCondList.forEach((cond: any) => {
                 if (cond.name) conditionsSet.add(cond.name);
@@ -32,10 +35,8 @@ function mapApiHitToVariant(hit: any): Variant {
     const conditions = Array.from(conditionsSet);
     const disease = conditions.length > 0 ? conditions[0] : "N/A";
     
-    // Format: Benign(4) Uncertain Significance(3)
-    const aggregatedSig = Object.entries(sigCounts)
-        .map(([sig, count]) => (count > 1 ? `${sig}(${count})` : sig))
-        .join(" || ") || "Uncertain Significance";
+    // Aggregated clinical significance for germline-only records
+    const aggregatedSig = Object.keys(sigCounts).join(" || ") || "Uncertain Significance";
 
     return {
         id: hit._id,

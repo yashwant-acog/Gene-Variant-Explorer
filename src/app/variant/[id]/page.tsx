@@ -77,8 +77,9 @@ export default function VariantPage({ params }: Props) {
   let variant: Variant;
 
   if (customVariant) {
+    const cv = customVariant as any;
     // Fallback for live ClinVar variants or unknown IDs
-    const genomicParts = (customVariant.Genomic_ID || "").split(":");
+    const genomicParts = (cv.Genomic_ID || "").split(":");
     const parseSci = (val: string) => {
       if (!val || val.trim() === "NA" || val.trim() === "False") return 0;
       const parsed = parseFloat(val);
@@ -88,12 +89,12 @@ export default function VariantPage({ params }: Props) {
       id: cDNA,
       gene: "FGFR3",
       disease:
-        customVariant.condition && customVariant.condition !== "NA"
-          ? customVariant.condition
+        cv.condition && cv.condition !== "NA"
+          ? cv.condition
           : "Custom Analysis",
       genomicID:
-        customVariant.Genomic_ID && customVariant.Genomic_ID.trim() !== "NA"
-          ? customVariant.Genomic_ID.trim()
+        cv.Genomic_ID && cv.Genomic_ID.trim() !== "NA"
+          ? cv.Genomic_ID.trim()
           : "N/A",
       chromosome: genomicParts[0] || "N/A",
       position: parseInt(genomicParts[1]) || 0,
@@ -101,91 +102,72 @@ export default function VariantPage({ params }: Props) {
       reference: genomicParts[2] || "N/A",
       alternate: genomicParts[3] || "N/A",
       transcript: "N/A",
-      hgvsConsequence: customVariant.cDNA_change || "",
-      proteinConsequence: customVariant.Protein_change || "",
+      hgvsConsequence: cv.cDNA_change || "",
+      proteinConsequence: cv.Protein_change || "",
       vepAnnotation: "missense_variant",
       clinvarGermlineClassification: "Unknown", // Add later
       clinvarVariationID: "",
-      alleleFrequency: parseSci(customVariant["Allele Frequency"]),
-      alleleCount: parseSci(customVariant["Allele Count"]),
-      alleleNumber: parseSci(customVariant["Allele Number"]),
+      alleleFrequency: parseSci(cv["Allele Frequency"]),
+      alleleCount: parseSci(cv["Allele Count"]),
+      alleleNumber: parseSci(cv["Allele Number"]),
 
-      alleleCountAfrican: parseSci(
-        customVariant["Allele Count African/African American"],
-      ),
+      alleleCountAfrican: parseSci(cv["Allele Count African/African American"]),
       alleleNumberAfrican: parseSci(
-        customVariant["Allele Number African/African American"],
+        cv["Allele Number African/African American"],
       ),
 
-      alleleCountAdmixedAmerican: parseSci(
-        customVariant["Allele Count Admixed American"],
-      ),
+      alleleCountAdmixedAmerican: parseSci(cv["Allele Count Admixed American"]),
       alleleNumberAdmixedAmerican: parseSci(
-        customVariant["Allele Number Admixed American"],
+        cv["Allele Number Admixed American"],
       ),
 
-      alleleCountAshkenaziJewish: parseSci(
-        customVariant["Allele Count Ashkenazi Jewish"],
-      ),
+      alleleCountAshkenaziJewish: parseSci(cv["Allele Count Ashkenazi Jewish"]),
       alleleNumberAshkenaziJewish: parseSci(
-        customVariant["Allele Number Ashkenazi Jewish"],
+        cv["Allele Number Ashkenazi Jewish"],
       ),
 
-      alleleCountEastAsian: parseSci(customVariant["Allele Count East Asian"]),
-      alleleNumberEastAsian: parseSci(
-        customVariant["Allele Number East Asian"],
-      ),
+      alleleCountEastAsian: parseSci(cv["Allele Count East Asian"]),
+      alleleNumberEastAsian: parseSci(cv["Allele Number East Asian"]),
 
       alleleCountEuropeanFinnish: parseSci(
-        customVariant["Allele Count European (Finnish)"],
+        cv["Allele Count European (Finnish)"],
       ),
       alleleNumberEuropeanFinnish: parseSci(
-        customVariant["Allele Number European (Finnish)"],
+        cv["Allele Number European (Finnish)"],
       ),
 
-      alleleCountMiddleEastern: parseSci(
-        customVariant["Allele Count Middle Eastern"],
-      ),
-      alleleNumberMiddleEastern: parseSci(
-        customVariant["Allele Number Middle Eastern"],
-      ),
+      alleleCountMiddleEastern: parseSci(cv["Allele Count Middle Eastern"]),
+      alleleNumberMiddleEastern: parseSci(cv["Allele Number Middle Eastern"]),
 
       alleleCountEuropeanNonFinnish: parseSci(
-        customVariant["Allele Count European (non-Finnish)"],
+        cv["Allele Count European (non-Finnish)"],
       ),
       alleleNumberEuropeanNonFinnish: parseSci(
-        customVariant["Allele Number European (non-Finnish)"],
+        cv["Allele Number European (non-Finnish)"],
       ),
 
-      alleleCountAmish: parseSci(customVariant["Allele Count Amish"]),
-      alleleNumberAmish: parseSci(customVariant["Allele Number Amish"]),
+      alleleCountAmish: parseSci(cv["Allele Count Amish"]),
+      alleleNumberAmish: parseSci(cv["Allele Number Amish"]),
 
-      alleleCountSouthAsian: parseSci(
-        customVariant["Allele Count South Asian"],
-      ),
-      alleleNumberSouthAsian: parseSci(
-        customVariant["Allele Number South Asian"],
-      ),
+      alleleCountSouthAsian: parseSci(cv["Allele Count South Asian"]),
+      alleleNumberSouthAsian: parseSci(cv["Allele Number South Asian"]),
 
       sourceType: "custom",
-      conditions:
-        customVariant.condition && customVariant.condition !== "NA"
-          ? [customVariant.condition]
-          : [],
-      Mutation_type: customVariant.Mutation_type,
-      REVEL: customVariant?.REVEL,
-      condition: customVariant?.condition,
-      Genomic_ID: customVariant?.Genomic_ID,
-      Functional: customVariant.Functional,
-      Pvalue_functional: customVariant.Pvalue_functional,
-      VEST4_score: customVariant.VEST4_score,
-      MutPred_score: customVariant.MutPred_score,
-      BayesDel_addAF_score: customVariant.BayesDel_addAF_score,
-      ACMG: customVariant.ACMG,
-      Meta_height: customVariant.Meta_height,
-      Meta_height_SE: customVariant.Meta_height_SE,
-      Meta_ratio: customVariant.Meta_ratio,
-      Meta_ratio_SE: customVariant.Meta_ratio_SE,
+      conditions: cv.condition && cv.condition !== "NA" ? [cv.condition] : [],
+      Mutation_type: cv.Mutation_type,
+      REVEL: cv?.REVEL,
+      condition: cv?.condition,
+      Genomic_ID: cv?.Genomic_ID,
+      Functional: cv.Functional,
+      Pvalue_functional: cv.Pvalue_functional,
+      VEST4_score: cv.VEST4_score,
+      MutPred_score: cv.MutPred_score,
+      BayesDel_addAF_score: cv.BayesDel_addAF_score,
+      ACMG: cv.ACMG,
+      Meta_height: cv.Meta_height,
+      Meta_height_SE: cv.Meta_height_SE,
+      Meta_ratio: cv.Meta_ratio,
+      Meta_ratio_SE: cv.Meta_ratio_SE,
     };
   } else {
     variant = {
@@ -429,11 +411,6 @@ export default function VariantPage({ params }: Props) {
               <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
                 {variant.id}
               </h1>
-              <span
-                className={`px-3 py-1 inline-flex text-xs font-bold uppercase tracking-wider rounded-full border ${badgeColors}`}
-              >
-                {displayClassification}
-              </span>
               {/* <Link
                 href={`https://gnomad.broadinstitute.org/variant/${variant.Genomic_ID?.replaceAll(
                   ":",

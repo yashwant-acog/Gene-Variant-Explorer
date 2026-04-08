@@ -45,36 +45,45 @@ export default function ClinicalTab({
           <>
             {/* Two-column layout for conditions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column - Additional Conditions */}
-              {variant?.condition != "NA" && (
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
-                    Additional Conditions
-                  </h4>
+              {/* Left Column - Custom Conditions */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
+                  Custom Conditions
+                </h4>
+                {variant?.condition &&
+                variant.condition !== "NA" &&
+                variant.condition !== "N/A" ? (
                   <div className="flex flex-wrap gap-2">
                     <span className="bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300 px-3 py-1.5 rounded-lg text-sm font-medium border border-primary-100 dark:border-primary-800/30">
                       {variant?.condition}
                     </span>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-sm italic text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/30 px-4 py-3 rounded-lg border border-dashed border-gray-200 dark:border-gray-700/50">
+                    No custom conditions provided for this variant
+                  </div>
+                )}
+              </div>
 
               {/* Right Column - ClinVar Database Matches */}
-              {clinvarMatches && clinvarMatches.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
-                    ClinVar Database Matches
-                  </h4>
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
+                  ClinVar Database Matches
+                </h4>
 
-                  {clinvarMatches.map((match, index) => (
-                    <div key={index} className="mb-4 last:mb-0">
+                {clinvarMatches && clinvarMatches.length > 0 ? (
+                  clinvarMatches.map((match, index) => (
+                    <div
+                      key={index}
+                      className="mb-6 last:mb-0 bg-gray-50/50 dark:bg-gray-900/20 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50"
+                    >
                       <Link
                         href={`https://www.ncbi.nlm.nih.gov/clinvar/variation/${match.variationID}/`}
                         target="_blank"
-                        className="flex inline-flex text-xs font-mono font-semibold text-primary-600 dark:text-primary-400 mb-2 bg-primary-50 dark:bg-primary-900/20 inline-block px-2 py-1 rounded"
+                        className="flex inline-flex items-center text-xs font-mono font-semibold text-primary-600 dark:text-primary-400 mb-3 bg-primary-100/50 dark:bg-primary-900/40 px-2 py-1 rounded hover:bg-primary-100 transition-colors"
                       >
                         Variation ID: {match.variationID}
-                        <div className="h-4 w-4 ml-1 cursor-pointer">
+                        <div className="h-3 w-3 ml-1.5">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -86,16 +95,16 @@ export default function ClinicalTab({
                       </Link>
 
                       {match.conditions && match.conditions.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 mt-1">
                           {match.conditions.map(
                             (condition: string, condIndex: number) => (
                               <span
                                 key={condIndex}
-                                className="bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300 px-3 py-1.5 rounded-lg text-sm font-medium border border-primary-100 dark:border-primary-800/30"
+                                className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-600 shadow-sm"
                               >
                                 {condition}
                               </span>
-                            )
+                            ),
                           )}
                         </div>
                       ) : (
@@ -104,18 +113,14 @@ export default function ClinicalTab({
                         </p>
                       )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* No data state */}
-            {(!clinvarMatches || clinvarMatches.length === 0) &&
-            variant?.condition === "NA" ? (
-              <div className="text-center py-8 text-gray-500 italic">
-                No conditions provided for this variant
+                  ))
+                ) : (
+                  <div className="text-sm italic text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/30 px-4 py-3 rounded-lg border border-dashed border-gray-200 dark:border-gray-700/50">
+                    No ClinVar database matches found
+                  </div>
+                )}
               </div>
-            ) : null}
+            </div>
           </>
         )}
 
