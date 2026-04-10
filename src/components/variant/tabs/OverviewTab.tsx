@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Variant } from "@/lib/types";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 interface OverviewTabProps {
   variant: Variant;
@@ -18,6 +19,44 @@ export default function OverviewTab({
   const [showClinVarClassification, setShowClinVarClassification] =
     useState(false);
   const [selectedClinVarIndex, setSelectedClinVarIndex] = useState(0);
+  const [ncbiData, setNcbiData] = useState<any>(null);
+  const [myVariantData, setMyVariantData] = useState<any>(null);
+  const [clinvarLoading, setClinvarLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const variationID = searchParams.get("variationID");
+  const hgvsId = searchParams.get("hgvsId");
+
+  useEffect(() => {
+    async function fetchExternalData() {
+      if (!variationID && !hgvsId) return;
+      setClinvarLoading(true);
+
+      try {
+        if (variationID) {
+          const res = await fetch(
+            `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=clinvar&id=${variationID}&retmode=json`,
+          );
+          const data = await res.json();
+          setNcbiData(data);
+        }
+
+        if (hgvsId) {
+          const res = await fetch(
+            `https://myvariant.info/v1/variant/${encodeURIComponent(hgvsId)}`,
+          );
+          const data = await res.json();
+          setMyVariantData(data);
+        }
+      } catch (err) {
+        console.error("Error fetching external variant data:", err);
+      } finally {
+        setClinvarLoading(false);
+      }
+    }
+
+    fetchExternalData();
+  }, [variationID, hgvsId]);
+
   const hasClinVarMatches = clinvarMatches && clinvarMatches.length > 0;
   const pointsField = variant.ACMG || "0";
   const pts = parseFloat(pointsField);
@@ -243,57 +282,46 @@ export default function OverviewTab({
                 ClinVar Classification
               </h4>
 
-              {!hasClinVarMatches ? (
+              {clinvarLoading ? (
                 <div className="flex-1 flex items-center justify-center">
-                  <span className="text-sm italic text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 px-4 py-2 rounded-md border border-dashed border-gray-200 dark:border-gray-700">
-                    ClinVar classification not present for this variant
+                  <div className="w-8 h-8 border-3 border-primary-500/20 border-t-primary-500 rounded-full animate-spin"></div>
+                </div>
+              ) : !variationID && !hgvsId ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <span className="text-sm italic text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 px-4 py-2 rounded-md border border-dashed border-gray-200 dark:border-gray-700 text-center">
+                    No clinvar variant found
                   </span>
                 </div>
               ) : (
-                <>
-                  {/* Variant Navigation Tabs */}
-                  <div className="mb-4">
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {clinvarMatches.map((match, index) => (
-                        <div key={index}>
-                          <button
-                            onClick={() => setSelectedClinVarIndex(index)}
-                            className={`cursor-pointer px-4 py-2 rounded-lg text-[10px] flex items-center font-medium whitespace-nowrap transition-all ${
-                              index === selectedClinVarIndex
-                                ? "bg-primary-600 text-white shadow-md"
-                                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                            }`}
-                          >
-                            {match.title}
-                          </button>
-                          <Link
-                            href={`https://www.ncbi.nlm.nih.gov/clinvar/variation/${match.variationID}/`}
-                            target="_blank"
-                            className="flex items-center mt-2 text-blue-600"
-                          >
-                            <span className="text-[10px] underline ml-1 font-medium dark:text-gray-300 text-ellipsis truncate max-w-[150px]">
-                              Variation ID: {match.variationID}
-                            </span>
-                            <div className="h-4 w-4 ml-1 cursor-pointer">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                              >
-                                <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
-                              </svg>
-                            </div>
-                          </Link>
-                        </div>
-                      ))}
+                <div className="flex-1 flex flex-col h-full">
+                  {variationID && (
+                    <div className="mb-2">
+                      <Link
+                        href={`https://www.ncbi.nlm.nih.gov/clinvar/variation/${variationID}/`}
+                        target="_blank"
+                        className="flex items-center text-blue-600 hover:underline"
+                      >
+                        <span className="text-[10px] font-medium dark:text-gray-300">
+                          Variation ID: {variationID}
+                        </span>
+                        <svg
+                          className="h-3 w-3 ml-1"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z"></path>
+                        </svg>
+                      </Link>
                     </div>
-                  </div>
+                  )}
 
-                  {/* ClinVar Classification Plot for Selected Variant */}
                   <ClinVarClassificationPlot
-                    match={clinvarMatches[selectedClinVarIndex]}
+                    ncbiData={ncbiData}
+                    myVariantData={myVariantData}
+                    variationID={variationID || ""}
                   />
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -305,20 +333,21 @@ export default function OverviewTab({
 
 // ClinVar Classification Plot Component
 interface ClinVarClassificationPlotProps {
-  match: any;
+  ncbiData: any;
+  myVariantData: any;
+  variationID: string;
 }
 
-function ClinVarClassificationPlot({ match }: ClinVarClassificationPlotProps) {
-  const rawClassification = match.germlineClassification || "Unknown";
-  const lower = rawClassification.toLowerCase();
+function ClinVarClassificationPlot({
+  ncbiData,
+  myVariantData,
+  variationID,
+}: ClinVarClassificationPlotProps) {
+  const germlineClassification =
+    ncbiData?.result?.[variationID]?.germline_classification?.description ||
+    "Unknown";
+  const lowerDesc = germlineClassification.toLowerCase();
 
-  // Check for special cases where a plot doesn't make sense
-  const isSpecialCase =
-    lower.includes("conflicting") ||
-    lower.includes("not provided") ||
-    lower.includes("no classification for the single variant");
-
-  // Map ClinVar classifications to positions on a categorical scale
   const classifications = [
     "Benign",
     "Likely Benign",
@@ -327,96 +356,77 @@ function ClinVarClassificationPlot({ match }: ClinVarClassificationPlotProps) {
     "Pathogenic",
   ];
 
-  const getClassificationColor = (classification: string) => {
-    switch (classification.toLowerCase()) {
-      case "benign":
-        return "bg-emerald-500 text-white";
-      case "likely benign":
-        return "bg-emerald-400 text-white";
-      case "Uncertain Significance":
-      case "uncertain significance":
-        return "bg-amber-400 text-black";
-      case "likely pathogenic":
-        return "bg-orange-500 text-white";
-      case "pathogenic":
-        return "bg-red-600 text-white";
-      default:
-        return "bg-gray-400 text-white";
+  const getRank = (cls: string) => {
+    const l = cls.toLowerCase();
+
+    // Check for Uncertain/Conflicting first as they often contain "pathogenic" or "benign" in the description
+    if (
+      l.includes("uncertain") ||
+      l.includes("vus") ||
+      l.includes("conflicting")
+    ) {
+      return 2;
     }
+
+    if (l.includes("likely pathogenic")) return 3;
+    if (l.includes("pathogenic")) return 4;
+    if (l.includes("likely benign")) return 1;
+    if (l.includes("benign")) return 0;
+
+    return -1;
   };
 
-  // Normalize the classification string
-  const normalizeClassification = (rawClassification: string) => {
-    const lower = rawClassification.toLowerCase();
-    if (lower.includes("benign") && !lower.includes("likely")) return "Benign";
-    if (lower.includes("likely benign")) return "Likely Benign";
-    if (lower.includes("Uncertain Significance") || lower.includes("uncertain"))
-      return "Uncertain Significance";
-    if (lower.includes("likely pathogenic")) return "Likely Pathogenic";
-    if (lower.includes("pathogenic")) return "Pathogenic";
-    return rawClassification;
+  const getClassificationColor = (rank: number) => {
+    if (rank >= 3.5) return "bg-red-600 text-white";
+    if (rank >= 2.5) return "bg-orange-500 text-white";
+    if (rank >= 1.5) return "bg-amber-400 text-black";
+    if (rank >= 0.5) return "bg-emerald-400 text-white";
+    return "bg-emerald-500 text-white";
   };
 
-  if (isSpecialCase) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-12">
-        <div className="bg-amber-50 dark:bg-amber-900/10 p-6 rounded-xl border border-amber-200 dark:border-amber-800/30 text-center max-w-sm">
-          <svg
-            className="w-10 h-10 text-amber-500 mx-auto mb-3"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-          <h5 className="text-sm font-bold text-amber-800 dark:text-amber-400 mb-2 uppercase tracking-wide">
-            {lower.includes("conflicting")
-              ? "Conflicting Interpretations"
-              : lower.includes("no classification for the single variant")
-                ? "No Classification for the Single Variant"
-                : "Data Not Provided"}
-          </h5>
-          <p className="text-xs text-amber-700 dark:text-amber-300 italic">
-            This variant is flagged as:{" "}
-            <span className="font-semibold block mt-1 not-italic">
-              &quot;{rawClassification}&quot;
-            </span>
-          </p>
-        </div>
-        <p className="text-[10px] text-gray-400 mt-4 border-t border-gray-100 dark:border-gray-700 pt-3 w-full">
-          ClinVar germline classification sourced from NCBI ClinVar database.
-        </p>
-      </div>
-    );
+  // Handle Conflicting
+  let displayLabels: string[] = [germlineClassification];
+  let positionPercent = 50;
+  let rangeIndices: number[] = [];
+
+  const isConflicting = lowerDesc.includes("conflicting");
+
+  if (isConflicting && myVariantData?.clinvar) {
+    const rcv = myVariantData.clinvar.rcv;
+    const rcvArray = Array.isArray(rcv) ? rcv : [rcv];
+    const significances = new Set<string>();
+
+    rcvArray.forEach((r: any) => {
+      const sig =
+        typeof r.clinical_significance === "string"
+          ? r.clinical_significance
+          : r.clinical_significance?.description;
+      if (sig) significances.add(sig);
+    });
+
+    if (significances.size > 0) {
+      displayLabels = Array.from(significances);
+      rangeIndices = displayLabels
+        .map((s) => getRank(s))
+        .filter((r) => r !== -1);
+    }
   }
 
-  const displayClassification = normalizeClassification(rawClassification);
+  const finalRank =
+    rangeIndices.length > 0
+      ? rangeIndices.reduce((a, b) => a + b, 0) / rangeIndices.length
+      : getRank(germlineClassification) !== -1
+        ? getRank(germlineClassification)
+        : 2;
 
-  const positionIndex = classifications.findIndex(
-    (c) => c.toLowerCase() === displayClassification.toLowerCase(),
-  );
+  positionPercent = ((finalRank + 0.5) / classifications.length) * 100;
 
-  const validPosition = positionIndex >= 0 ? positionIndex : 2; // Default to Uncertain Significance if not found
-  const positionPercent =
-    ((validPosition + 0.5) / classifications.length) * 100;
-
-  const { label: classification, colorClass } = (() => {
-    const normalized = normalizeClassification(rawClassification);
-    return {
-      label: normalized,
-      colorClass: getClassificationColor(normalized),
-    };
-  })();
+  const badgeColor = getClassificationColor(finalRank);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 flex-1 flex flex-col h-full">
       {/* Classification Visualization */}
-      <div className="relative pt-12 pb-14">
+      <div className="relative pt-12 pb-14 mt-8">
         {/* Floating badge */}
         <div
           className="absolute z-20"
@@ -428,14 +438,16 @@ function ClinVarClassificationPlot({ match }: ClinVarClassificationPlotProps) {
         >
           <div className="flex flex-col items-center">
             <div
-              className={`py-2.5 px-2 rounded-full text-white font-semibold text-[10px] ${colorClass} border-2 border-current whitespace-nowrap min-w-[80px] text-center`}
+              className={`py-2 px-3 rounded-full text-white font-semibold text-[10px] ${badgeColor} border-2 border-current whitespace-nowrap text-center max-w-[400px] shadow-sm`}
             >
-              {classification}
+              {displayLabels.length > 2
+                ? `Conflicting interpretations of pathogenicity`
+                : displayLabels.join(" / ")}
             </div>
             <div
               className="w-0 h-0 mt-1 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[6px]"
               style={{
-                borderTopColor: colorClass.split(" ")[0].replace("bg-", "#"),
+                borderTopColor: badgeColor.split(" ")[0].replace("bg-", "#"),
               }}
             />
           </div>
@@ -451,7 +463,7 @@ function ClinVarClassificationPlot({ match }: ClinVarClassificationPlotProps) {
             return (
               <div
                 key={category}
-                className="absolute text-[10px] font-medium text-gray-700 dark:text-gray-300 transform -translate-x-1/2"
+                className="absolute text-[9px] font-bold text-gray-500 dark:text-gray-400 transform -translate-x-1/2 text-center w-16"
                 style={{ left: `${pos}%` }}
               >
                 {category}
@@ -461,9 +473,44 @@ function ClinVarClassificationPlot({ match }: ClinVarClassificationPlotProps) {
         </div>
       </div>
 
-      <p className="text-[10px] text-gray-400 mt-4 border-t border-gray-100 dark:border-gray-700 pt-3">
-        ClinVar germline classification sourced from NCBI ClinVar database.
-      </p>
+      <div className="flex-1"></div>
+
+      <div className="mt-auto border-t border-gray-100 dark:border-gray-700 pt-4">
+        <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+          Source Data
+        </h5>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-gray-500 dark:text-gray-400">
+              NCBI ClinVar:
+            </span>
+            <span className="font-semibold text-gray-700 dark:text-gray-300">
+              {germlineClassification}
+            </span>
+          </div>
+          {isConflicting && displayLabels.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                MyVariant Significances:
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {displayLabels.map((l, i) => (
+                  <span
+                    key={i}
+                    className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[9px] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
+                  >
+                    {l}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <p className="text-[9px] text-gray-400 mt-3 italic">
+          ClinVar germline classification sourced from NCBI ClinVar and
+          MyVariant.info databases.
+        </p>
+      </div>
     </div>
   );
 }

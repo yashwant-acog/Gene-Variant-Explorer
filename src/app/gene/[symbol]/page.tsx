@@ -7,7 +7,7 @@ import VariantTable from "@/components/tables/VariantTable";
 import CustomVariantTable from "@/components/tables/CustomVariantTable";
 import ScatterPlot, { ScatterDataPoint } from "@/components/charts/ScatterPlot";
 import ACMGDistribution from "@/components/charts/ACMGDistribution";
-import { dummyCustomVariants } from "@/lib/dummyData";
+import { dummyCustomVariants } from "../../../lib/dummyData";
 import { fetchClinVarVariants } from "@/lib/api";
 import { Variant } from "@/lib/types";
 import ColumnSelector from "@/components/tables/ColumnSelector";
@@ -310,7 +310,7 @@ export default function GeneDashboard() {
   // Lookup maps for O(1) cross-dataset access
   const customLookupMap = useMemo(() => {
     const map = new Map<string, any>();
-    dummyCustomVariants.forEach((cv) => {
+    dummyCustomVariants.forEach((cv: any) => {
       const key = normalizeCDNA(cv.cDNA_change);
       if (key) {
         map.set(key, {
@@ -334,6 +334,7 @@ export default function GeneDashboard() {
           variationID: v.clinvarVariationID,
           genomicID: v.genomicID,
           transcript: v.transcript,
+          id: v.id,
         });
       }
     });
@@ -348,8 +349,8 @@ export default function GeneDashboard() {
       result = clinvarVariants;
     } else {
       result = dummyCustomVariants
-        .filter((v) => symbol?.toUpperCase() === "FGFR3")
-        .map((cv) => {
+        .filter((v: any) => symbol?.toUpperCase() === "FGFR3")
+        .map((cv: any) => {
           const genomicParts = (cv.Genomic_ID || "").split(":");
           return {
             id: cv.cDNA_change || "N/A",
@@ -399,6 +400,11 @@ export default function GeneDashboard() {
             clinvarTranscript: clinvarLookupMap.get(
               normalizeCDNA(cv.cDNA_change),
             )?.transcript,
+            clinvarVariant_ID: clinvarLookupMap.get(
+              normalizeCDNA(cv.cDNA_change),
+            )?.variationID,
+            myvariant_id: clinvarLookupMap.get(normalizeCDNA(cv.cDNA_change))
+              ?.id,
           };
         });
     }

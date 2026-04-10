@@ -157,7 +157,9 @@ export default function CustomVariantTable({
                       <Link
                         href={`/variant/${encodeURIComponent(
                           v.cDNA_change,
-                        )}?genomicId=${genomicIdEncoded}`}
+                        )}?genomicId=${genomicIdEncoded}&variationID=${
+                          (v as any).clinvarVariant_ID || ""
+                        }&hgvsId=${(v as any).myvariant_id || ""}`}
                         className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
                       >
                         {value}

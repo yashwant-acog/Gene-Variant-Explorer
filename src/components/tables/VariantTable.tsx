@@ -195,7 +195,7 @@ export default function VariantTable({
                           <Link
                             href={`/variant/${encodeURIComponent(
                               cdna,
-                            )}?genomicId=${genomicId}`}
+                            )}?genomicId=${genomicId}&variationID=${variant.clinvarVariationID}&hgvsId=${variant.id}`}
                             className="text-blue-600 dark:text-blue-400 font-medium"
                           >
                             <span className="hover:underline">{cdna}</span>
