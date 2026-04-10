@@ -141,6 +141,8 @@ export interface Variant {
     };
     acmgClassification?: string;
     clinvarClassification?: string;
+    myvariant_id?: string;
+    clinvarVariant_ID?: string;
 }
 
 export interface CustomVariant {
