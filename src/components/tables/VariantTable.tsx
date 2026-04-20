@@ -2,10 +2,9 @@ import Link from "next/link";
 import { Variant } from "@/lib/types";
 
 export const CLINVAR_COLUMNS = [
-  { key: "Variation", label: "Variation" },
+  { key: "Variation", label: "cDNA Change" },
   { key: "genomicID", label: "Genomic ID" },
   { key: "Protein_change", label: "Protein change" },
-  { key: "rsID", label: "rsID" },
   { key: "clinvarClassification", label: "ClinVar Classification" },
   { key: "acmgClassification", label: "ACMG Classification" },
   { key: "conditions", label: "ClinVar Conditions" },
@@ -60,7 +59,7 @@ export default function VariantTable({
       case "benign/likely benign":
         return "bg-emerald-400 text-white";
       case "uncertain significance":
-        return "bg-amber-400 text-black";
+        return "bg-amber-400 text-white";
       case "likely pathogenic":
         return "bg-orange-500 text-white";
       case "pathogenic/likely pathogenic":
@@ -106,14 +105,36 @@ export default function VariantTable({
     Ter: "*",
   };
 
-  const formatProteinConsequence = (consequence: string) => {
-    if (!consequence || !consequence.includes("p.")) return consequence;
+  const formatProteinConsequence = (
+    consequence: string,
+    preferredName?: string,
+    customProteinChange?: string,
+  ) => {
+    let source = consequence;
+
+    // 1. Try to extract from preferredName first
+    // Example: NM_000142.5(FGFR3):c.824G>T (p.Cys275Phe)
+    if (preferredName && preferredName.includes("(p.")) {
+      const match = preferredName.match(/\(p\.([^)]+)\)/);
+      if (match) {
+        source = `p.${match[1]}`;
+      }
+    }
+
+    // 2. If no valid p. found in preferredName or consequence, check custom data
+    const hasProteinInfo = (str: string) =>
+      str && str !== "N/A" && str.includes("p.");
+
+    if (!hasProteinInfo(source) && hasProteinInfo(customProteinChange || "")) {
+      source = customProteinChange!;
+    }
+
+    if (!source || !source.includes("p.")) return source || "N/A";
 
     // Extract the part starting from 'p.' (e.g., p.Gln485Arg)
-    const pPart = consequence.split("p.")[1] || consequence;
+    const pPart = source.split("p.")[1] || source;
 
     // Use regex to replace 3-letter codes with 1-letter codes
-    // We look for 3 letters followed by numbers or ending strings
     return pPart.replace(/([A-Z][a-z]{2})/g, (match) => {
       return AA_MAP[match] || match; // Fallback to original if not found
     });
@@ -186,31 +207,48 @@ export default function VariantTable({
                   const cellClassName = "px-4 py-3 text-sm";
 
                   if (col.key === "Variation") {
-                    const rawCdna = variant.clinvar?.hgvs.coding[0];
-                    const cdna: any = rawCdna?.split(":")[1];
-                    const genomicId = `${variant.clinvar?.chrom}:${variant.clinvar?.hg38.start}:${variant.clinvar?.ref}:${variant.clinvar?.alt}`;
+                    const cdnaList =
+                      variant.cdnaChanges && variant.cdnaChanges.length > 0
+                        ? variant.cdnaChanges
+                        : [variant.hgvsConsequence || "N/A"];
+                    const genomicId = variant.genomicID;
+
+                    const hasValidCdna = cdnaList.some((c) => c && c !== "N/A");
+
                     return (
                       <td key={col.key} className={cellClassName}>
-                        {cdna ? (
-                          <Link
-                            href={`/variant/${encodeURIComponent(
-                              cdna,
-                            )}?genomicId=${genomicId}&variationID=${variant.clinvarVariationID}&hgvsId=${variant.id}`}
-                            className="text-blue-600 dark:text-blue-400 font-medium"
-                          >
-                            <span className="hover:underline">{cdna}</span>
-                            <div>
-                              <span className="text-sm text-gray-400">
-                                {variant.clinvar?.rcv.preferred_name}
-                              </span>
-                            </div>
-                          </Link>
+                        {hasValidCdna ? (
+                          <div className="flex flex-col space-y-1">
+                            {cdnaList.map((cdna, idx) => {
+                              if (!cdna || cdna === "N/A") return null;
+                              const cdnaOnly = cdna.replace(/\s*\(p\..*\)/, "");
+                              return (
+                                <Link
+                                  key={idx}
+                                  href={`/variant/${encodeURIComponent(
+                                    cdna,
+                                  )}?genomicId=${genomicId}&variationID=${variant.clinvarVariationID}&hgvsId=${variant.id}`}
+                                  className="text-blue-600 dark:text-blue-400 font-medium hover:underline text-xs"
+                                >
+                                  {cdnaOnly}
+                                </Link>
+                              );
+                            })}
+                            {variant.isHaplotype && (
+                              <div className="text-[10px] text-gray-500 italic mt-0.5">
+                                this is a haplotype
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <div className="text-blue-600 dark:text-blue-400 font-medium">
                             <div>
-                              <span className="text-sm text-gray-400">
-                                {variant?.clinvar?.rcv?.preferred_name}
+                              <span className="text-sm font-semibold text-gray-500">
+                                ID: {variant.clinvarVariationID}
                               </span>
+                              <div className="text-xs text-gray-400 font-normal mt-1">
+                                {variant?.clinvar?.rcv?.preferred_name}
+                              </div>
                             </div>
                           </div>
                         )}
@@ -221,6 +259,8 @@ export default function VariantTable({
                   if (col.key === "Protein_change") {
                     const formattedValue = formatProteinConsequence(
                       variant.proteinConsequence,
+                      variant.clinvar?.rcv?.preferred_name,
+                      (variant as any).customProteinChange,
                     );
 
                     return (
@@ -248,19 +288,31 @@ export default function VariantTable({
                   }
 
                   if (col.key === "genomicID") {
+                    const gids =
+                      variant.genomicIDs && variant.genomicIDs.length > 0
+                        ? variant.genomicIDs
+                        : [variant.genomicID || "Not found"];
+
                     return (
                       <td
                         key={col.key}
                         className={`${cellClassName} font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap left-0 bg-white dark:bg-scientific-bg group-hover:bg-gray-50/50 dark:group-hover:bg-[#152033] z-10`}
                       >
-                        {(variant as any).customGenomicID ||
-                          (variant.sourceType === "clinvar"
-                            ? formatClinVarGenomicID(variant)
-                            : variant.genomicID)}
-                        <div className="text-[10px] text-gray-400 mt-0.5">
-                          {variant.sourceType === "clinvar"
-                            ? "ClinVar"
-                            : "Custom"}
+                        <div className="flex flex-col space-y-1">
+                          {gids.map((gid, idx) => {
+                            const isValid =
+                              gid &&
+                              gid.split(":").length === 4 &&
+                              gid
+                                .split(":")
+                                .every((p) => p && p !== "undefined") &&
+                              gid !== "Not found";
+                            return (
+                              <div key={idx} className="text-xs">
+                                {isValid ? gid : gids.length === 1 ? "-" : null}
+                              </div>
+                            );
+                          })}
                         </div>
                       </td>
                     );
@@ -352,25 +404,19 @@ export default function VariantTable({
                   if (col.key === "clinvar") {
                     const cDNA =
                       variant.transcript || variant.hgvsConsequence || "";
-                    if (!cDNA || cDNA === "N/A") {
+                    if (!variant.clinvarVariationID) {
                       return (
                         <td key={col.key} className={cellClassName}>
                           -
                         </td>
                       );
                     }
-                    const term = encodeURIComponent(
-                      `"${cDNA}"[VARNAME] AND "${gene}"[GENE]`,
-                    );
                     return (
                       <td key={col.key} className={cellClassName}>
                         <Link
-                          href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${cDNA}&gene=${gene}&term=${term}`}
+                          href={`https://www.ncbi.nlm.nih.gov/clinvar/variation/${variant.clinvarVariationID}`}
                           className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
                           target="_blank"
-                          onClick={() =>
-                            console.log("right = ", cDNA, gene, term)
-                          }
                         >
                           <div className="h-4 w-4 ml-1">
                             <svg
@@ -387,8 +433,16 @@ export default function VariantTable({
                   }
 
                   if (col.key === "gnomad") {
-                    const genomicID = (variant as any).customGenomicID || "";
-                    if (!genomicID) {
+                    const genomicID = variant.genomicID || "";
+                    const isValidGid =
+                      genomicID &&
+                      genomicID.split(":").length === 4 &&
+                      genomicID
+                        .split(":")
+                        .every((p) => p && p !== "undefined") &&
+                      genomicID !== "Not found";
+
+                    if (!isValidGid) {
                       return (
                         <td key={col.key} className={cellClassName}>
                           -

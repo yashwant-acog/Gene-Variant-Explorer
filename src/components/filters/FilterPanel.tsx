@@ -5,7 +5,8 @@ import { Variant } from "@/lib/types";
 import AccordionSection from "./Accordion";
 
 export interface FilterState {
-  classifications: string[];
+  clinvarClassifications: string[];
+  acmgClassifications: string[];
   vepAnnotations: string[];
   mutationTypes: string[];
   afMin: number | "";
@@ -40,14 +41,34 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
     "not provided",
   ];
 
-  const handleClassificationChange = (cls: string) => {
+  const ACMGClassifications = [
+    "Pathogenic",
+    "Likely Pathogenic",
+    "Uncertain significance",
+    "Likely Benign",
+    "Benign",
+  ];
+
+  const handleClinvarChange = (cls: string) => {
     setPendingFilters((prev) => {
-      const isSelected = prev.classifications.includes(cls);
+      const isSelected = prev.clinvarClassifications.includes(cls);
       return {
         ...prev,
-        classifications: isSelected
-          ? prev.classifications.filter((c) => c !== cls)
-          : [...prev.classifications, cls],
+        clinvarClassifications: isSelected
+          ? prev.clinvarClassifications.filter((c) => c !== cls)
+          : [...prev.clinvarClassifications, cls],
+      };
+    });
+  };
+
+  const handleACMGChange = (cls: string) => {
+    setPendingFilters((prev) => {
+      const isSelected = prev.acmgClassifications.includes(cls);
+      return {
+        ...prev,
+        acmgClassifications: isSelected
+          ? prev.acmgClassifications.filter((c) => c !== cls)
+          : [...prev.acmgClassifications, cls],
       };
     });
   };
@@ -58,7 +79,8 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
 
   const resetFilters = () => {
     const initialFilters: FilterState = {
-      classifications: [],
+      clinvarClassifications: [],
+      acmgClassifications: [],
       vepAnnotations: [],
       mutationTypes: [],
       afMin: "",
@@ -102,30 +124,51 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
       </div>
 
       <div className="px-4 py-1 mt-2">
-        {/* Classifications - Show for both ClinVar and Custom */}
-        {ClinvarClassifications.length > 0 && (
-          <AccordionSection title="Classification" defaultOpen={true}>
-            <div className="space-y-2 max-h-[400px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
-              {ClinvarClassifications.map((cls) => (
-                <label
-                  key={cls}
-                  className="flex items-center gap-3 cursor-pointer group"
-                >
-                  <input
-                    type="checkbox"
-                    checked={pendingFilters.classifications.includes(cls)}
-                    onChange={() => handleClassificationChange(cls)}
-                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
-                    {cls}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </AccordionSection>
-        )}
-        <div className="h-[0.5px] bg-gray-400 mt-[-20px]"></div>
+        {/* ClinVar Classifications */}
+        <AccordionSection title="ClinVar Classification" defaultOpen={true}>
+          <div className="space-y-2 max-h-[300px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
+            {ClinvarClassifications.map((cls) => (
+              <label
+                key={cls}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <input
+                  type="checkbox"
+                  checked={pendingFilters.clinvarClassifications.includes(cls)}
+                  onChange={() => handleClinvarChange(cls)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
+                  {cls}
+                </span>
+              </label>
+            ))}
+          </div>
+        </AccordionSection>
+
+        <div className="my-2 border-t border-gray-100 dark:border-gray-800" />
+
+        {/* ACMG Classifications */}
+        <AccordionSection title="ACMG Classification" defaultOpen={true}>
+          <div className="space-y-2 max-h-[300px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
+            {ACMGClassifications.map((cls) => (
+              <label
+                key={cls}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <input
+                  type="checkbox"
+                  checked={pendingFilters.acmgClassifications.includes(cls)}
+                  onChange={() => handleACMGChange(cls)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
+                  {cls}
+                </span>
+              </label>
+            ))}
+          </div>
+        </AccordionSection>
       </div>
 
       <>
