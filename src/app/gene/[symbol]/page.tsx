@@ -24,6 +24,13 @@ import Navbar from "@/components/layout/Navbar";
 //   | "points-desc"
 //   | "points-asc";
 
+// Helper to extract numeric position from cDNA (e.g., "c.1138G>A" -> 1138)
+const extractCdnaNumber = (cdna: string): number | null => {
+  if (!cdna) return null;
+  const match = cdna.match(/c\.(\d+)/i);
+  return match ? parseInt(match[1], 10) : null;
+};
+
 // Helper to extract numeric position from proteinConsequence (e.g., "p.Gly380Arg" -> 380)
 const extractPosition = (proteinConsequence: string): number | null => {
   if (!proteinConsequence) return null;
@@ -70,8 +77,20 @@ const formatProteinConsequence = (consequence: string) => {
 // Helper for dataset merging
 const normalizeCDNA = (cdna: string) => {
   if (!cdna || cdna === "N/A" || cdna === "NA") return "";
-  const part = cdna.includes(":") ? cdna.split(":")[1] : cdna;
-  return part.trim().replace(/\s+/g, "").toUpperCase();
+
+  // 1. Try to isolate c. marker using regex (handles "c.123A>G" within larger strings)
+  const cdnaMatch = cdna.match(/(c\.[0-9]+[^(\s]*)/i);
+  if (cdnaMatch) {
+    return cdnaMatch[1].toUpperCase().trim();
+  }
+
+  // 2. Fallback: Take part after last colon and split by space
+  const parts = cdna.split(":");
+  let candidate = parts[parts.length - 1].trim();
+  // Remove trailing info like "(p.Gly380Arg)" if present
+  candidate = candidate.split(" ")[0];
+
+  return candidate.toUpperCase().replace(/\s+/g, "");
 };
 
 const getColorForPoints = (points?: string) => {
@@ -148,6 +167,7 @@ export default function GeneDashboard() {
   const [clinvarVariants, setClinvarVariants] = useState<Variant[]>([]);
   const [clinvarTotal, setClinvarTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClinvarSyncing, setIsClinvarSyncing] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -164,14 +184,19 @@ export default function GeneDashboard() {
     "clinvar",
     "gnomad",
   ]);
+  const [sortOption, setSortOption] = useState<"cdna-asc" | "cdna-desc">(
+    "cdna-asc",
+  );
 
   // Initialize filters and search query from URL ONCE on mount using lazy initialization
   const [filters, setFilters] = useState<FilterState>(() => {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
       return {
-        classifications:
-          searchParams.get("classifications")?.split(",").filter(Boolean) || [],
+        clinvarClassifications:
+          searchParams.get("clinvar")?.split(",").filter(Boolean) || [],
+        acmgClassifications:
+          searchParams.get("acmg")?.split(",").filter(Boolean) || [],
         vepAnnotations:
           searchParams.get("vepAnnotations")?.split(",").filter(Boolean) || [],
         mutationTypes:
@@ -194,7 +219,8 @@ export default function GeneDashboard() {
       };
     }
     return {
-      classifications: [],
+      clinvarClassifications: [],
+      acmgClassifications: [],
       vepAnnotations: [],
       mutationTypes: [],
       afMin: "",
@@ -237,8 +263,10 @@ export default function GeneDashboard() {
     // Build URL params from current filters, search, and viewMode
     const params = new URLSearchParams();
 
-    if (filters.classifications.length > 0)
-      params.set("classifications", filters.classifications.join(","));
+    if (filters.clinvarClassifications.length > 0)
+      params.set("clinvar", filters.clinvarClassifications.join(","));
+    if (filters.acmgClassifications.length > 0)
+      params.set("acmg", filters.acmgClassifications.join(","));
     if (filters.vepAnnotations.length > 0)
       params.set("vepAnnotations", filters.vepAnnotations.join(","));
     if (filters.mutationTypes.length > 0)
@@ -255,16 +283,24 @@ export default function GeneDashboard() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [filters, searchQuery, viewMode, router]);
 
-  // Initial data load
+  // Initial data load - now incremental
   useEffect(() => {
     let isMounted = true;
     async function loadInitialData() {
       if (!symbol) return;
       setIsLoading(true);
-      const { variants, total } = await fetchClinVarVariants(symbol, 0, 1000);
+      setIsClinvarSyncing(true);
+
+      await fetchClinVarVariants(symbol, (chunkedVariants, totalCount) => {
+        if (isMounted) {
+          setClinvarVariants(chunkedVariants);
+          setClinvarTotal(totalCount);
+          setIsLoading(false); // Stop main loading as soon as we have first chunk
+        }
+      });
+
       if (isMounted) {
-        setClinvarVariants(variants);
-        setClinvarTotal(total);
+        setIsClinvarSyncing(false);
         setIsLoading(false);
       }
     }
@@ -273,39 +309,6 @@ export default function GeneDashboard() {
       isMounted = false;
     };
   }, [symbol]);
-
-  // Fetch more data if the current page requires variants beyond what we've loaded
-  useEffect(() => {
-    const variantsNeeded = currentPage * pageSize;
-    if (
-      viewMode === "clinvar" &&
-      !isLoading &&
-      !isFetchingMore &&
-      variantsNeeded > clinvarVariants.length &&
-      clinvarVariants.length < clinvarTotal
-    ) {
-      const fetchMore = async () => {
-        setIsFetchingMore(true);
-        const { variants } = await fetchClinVarVariants(
-          symbol,
-          clinvarVariants.length,
-          1000,
-        );
-        setClinvarVariants((prev) => [...prev, ...variants]);
-        setIsFetchingMore(false);
-      };
-      fetchMore();
-    }
-  }, [
-    currentPage,
-    pageSize,
-    viewMode,
-    clinvarVariants.length,
-    clinvarTotal,
-    isLoading,
-    isFetchingMore,
-    symbol,
-  ]);
 
   // Lookup maps for O(1) cross-dataset access
   const customLookupMap = useMemo(() => {
@@ -317,9 +320,11 @@ export default function GeneDashboard() {
           label: getLabelForPoints(cv.ACMG),
           condition: cv.condition,
           genomicID: cv.Genomic_ID,
+          proteinChange: cv.Protein_change,
         });
       }
     });
+    console.log(`Debug: customLookupMap created with ${map.size} entries.`);
     return map;
   }, []);
 
@@ -403,10 +408,14 @@ export default function GeneDashboard() {
             clinvarVariant_ID: clinvarLookupMap.get(
               normalizeCDNA(cv.cDNA_change),
             )?.variationID,
+            clinvarGenomicID: clinvarLookupMap.get(
+              normalizeCDNA(cv.cDNA_change),
+            )?.genomicID,
             myvariant_id: clinvarLookupMap.get(normalizeCDNA(cv.cDNA_change))
               ?.id,
           };
         });
+      console.log("Debug: Finished mapping custom variants.");
     }
 
     if (viewMode === "clinvar") {
@@ -414,12 +423,18 @@ export default function GeneDashboard() {
         const customMatch = customLookupMap.get(
           normalizeCDNA(v.hgvsConsequence),
         );
+        if (customMatch) {
+          console.log(
+            `Debug: Matched ClinVar ${v.hgvsConsequence} to custom data.`,
+          );
+        }
         return {
           ...v,
           clinvarClassification: v.clinvarGermlineClassification,
           acmgClassification: customMatch?.label,
           customCondition: customMatch?.condition,
           customGenomicID: customMatch?.genomicID,
+          customProteinChange: customMatch?.proteinChange,
         };
       });
     }
@@ -479,27 +494,23 @@ export default function GeneDashboard() {
       return "Benign";
     };
 
-    if (filters.classifications.length > 0) {
+    // 3a. ClinVar Classifications
+    if (filters.clinvarClassifications.length > 0) {
       result = result.filter((v) => {
-        if (v.sourceType === "custom") {
-          const calculatedClass = getClassificationLabel(v.ACMG || "");
-          return filters.classifications.some((f) => {
-            if (f === "Uncertain significance / Uncertain Significance")
-              return calculatedClass === "Uncertain Significance";
-            return f.toLowerCase() === calculatedClass.toLowerCase();
-          });
-        }
+        const clinvarClassRaw = (
+          v.clinvarGermlineClassification ||
+          v.clinvarClassification ||
+          ""
+        ).toLowerCase();
+        if (!clinvarClassRaw || clinvarClassRaw === "custom") return false;
 
-        // ClinVar variants
-        const clinvarClassRaw = v.clinvarGermlineClassification || "";
         const individualClasses = clinvarClassRaw
           .split(" || ")
           .map((part) => part.split("(")[0].trim().toLowerCase());
 
-        return filters.classifications.some((f) => {
+        return filters.clinvarClassifications.some((f) => {
           const filterLower = f.toLowerCase();
 
-          // Handle "Uncertain significance"
           if (filterLower.includes("uncertain significance")) {
             return individualClasses.some(
               (cls) =>
@@ -509,21 +520,24 @@ export default function GeneDashboard() {
             );
           }
 
-          // Handle compound labels
-          if (filterLower === "pathogenic/likely pathogenic") {
-            return individualClasses.some(
-              (cls) => cls === "pathogenic" || cls === "likely pathogenic",
-            );
-          }
-          if (filterLower === "benign/likely benign") {
-            return individualClasses.some(
-              (cls) => cls === "benign" || cls === "likely benign",
-            );
+          if (filterLower.includes("conflicting")) {
+            return individualClasses.some((cls) => cls.includes("conflicting"));
           }
 
-          // Direct match for other labels
           return individualClasses.some((cls) => cls === filterLower);
         });
+      });
+    }
+
+    // 3b. ACMG Classifications
+    if (filters.acmgClassifications.length > 0) {
+      result = result.filter((v) => {
+        const acmgClass = (
+          v.acmgClassification || getLabelForPoints(v.ACMG || "")
+        ).toLowerCase();
+        return filters.acmgClassifications.some(
+          (f) => f.toLowerCase() === acmgClass.toLowerCase(),
+        );
       });
     }
 
@@ -550,26 +564,18 @@ export default function GeneDashboard() {
       );
 
     // 6. Sorting
-    // result = [...result].sort((a, b) => {
-    //   switch (sortOption) {
-    //     case "af-desc":
-    //       return b.alleleFrequency - a.alleleFrequency;
-    //     case "af-asc":
-    //       return a.alleleFrequency - b.alleleFrequency;
-    //     case "revel-desc":
-    //       return Number(b.REVEL) - Number(a.REVEL);
-    //     case "points-desc":
-    //       return parseFloat(b.ACMG || "0") - parseFloat(a.ACMG || "0");
-    //     case "points-asc":
-    //       return parseFloat(a.ACMG || "0") - parseFloat(b.ACMG || "0");
-    //     case "id-asc":
-    //     default:
-    //       return (a.genomicID || "").localeCompare(b.genomicID || "");
-    //   }
-    // });
+    result = [...result].sort((a, b) => {
+      const posA = extractCdnaNumber(a.hgvsConsequence || "");
+      const posB = extractCdnaNumber(b.hgvsConsequence || "");
+
+      if (posA === null) return 1;
+      if (posB === null) return -1;
+
+      return sortOption === "cdna-asc" ? posA - posB : posB - posA;
+    });
 
     return result;
-  }, [clinvarVariants, viewMode, symbol, filters, searchQuery]);
+  }, [clinvarVariants, viewMode, symbol, filters, searchQuery, sortOption]);
 
   const classificationScatterData = useMemo(() => {
     return filteredAndSortedVariants
@@ -622,8 +628,15 @@ export default function GeneDashboard() {
   }, [filters, searchQuery, viewMode, symbol, pageSize]);
 
   const hasActiveFilters =
-    filters.classifications.length > 0 ||
+    filters.clinvarClassifications.length > 0 ||
+    filters.acmgClassifications.length > 0 ||
+    filters.vepAnnotations.length > 0 ||
     filters.mutationTypes.length > 0 ||
+    filters.afMin !== "" ||
+    filters.afMax !== "" ||
+    filters.caddMin !== "" ||
+    filters.revelMin !== "" ||
+    filters.revelMax !== "" ||
     searchQuery.trim() !== "";
 
   const displayTotal =
@@ -706,7 +719,7 @@ export default function GeneDashboard() {
                   )}
                 </button>
                 <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
-                  {symbol?.toUpperCase()} Variants Directory
+                  {symbol?.toUpperCase()} Variants
                 </h1>
               </div>
 
@@ -783,6 +796,12 @@ export default function GeneDashboard() {
 
               {/* Right Section - Search & Sort */}
               <div className="flex items-center gap-3 order-2 md:order-3 w-full md:w-auto mt-3 md:mt-0 md:flex-none">
+                {isClinvarSyncing && (
+                  <div className="flex items-center text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 sm:px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800 animate-pulse whitespace-nowrap">
+                    <div className="h-2 w-2 bg-blue-600 dark:bg-blue-400 rounded-full mr-2 animate-bounce"></div>
+                    Syncing ClinVar... ({clinvarVariants.length})
+                  </div>
+                )}
                 {/* Search Input */}
                 <div className="relative w-full md:w-60 flex-1 md:flex-none">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -810,38 +829,25 @@ export default function GeneDashboard() {
                 </div>
 
                 {/* Sort Dropdown */}
-                {/* <div className="relative shrink-0">
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor="sortOrder"
+                    className="hidden lg:block text-xs text-gray-500 font-medium uppercase tracking-wider"
+                  >
+                    Sort:
+                  </label>
                   <select
+                    id="sortOrder"
                     value={sortOption}
                     onChange={(e) =>
-                      setSortOption(e.target.value as SortOption)
+                      setSortOption(e.target.value as "cdna-asc" | "cdna-desc")
                     }
-                    className="block w-20 pl-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer transition-colors"
+                    className="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 px-3 py-1.5 outline-none focus:ring-1 focus:ring-primary-500 transition-colors"
                   >
-                    <option value="id-asc">Sort: ID (A-Z)</option>
-                    <option value="points-desc">Sort: Highest Points</option>
-                    <option value="points-asc">Sort: Lowest Points</option>
-                    <option value="af-desc">Sort: Highest AF</option>
-                    <option value="af-asc">Sort: Lowest AF</option>
-                    <option value="cadd-desc">Sort: Highest CADD</option>
-                    <option value="revel-desc">Sort: Highest REVEL</option>
+                    <option value="cdna-asc">cDNA Position (Asc)</option>
+                    <option value="cdna-desc">cDNA Position (Desc)</option>
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-                </div> */}
+                </div>
               </div>
             </div>
           </div>
@@ -934,7 +940,7 @@ export default function GeneDashboard() {
                         <div className="p-4 h-full">
                           <ACMGDistribution
                             variants={filteredAndSortedVariants}
-                            title="ACMG Aggregate Composition"
+                            title="Classification Composition"
                             height="100%"
                             viewMode={viewMode}
                           />
@@ -997,12 +1003,6 @@ export default function GeneDashboard() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          {isFetchingMore && (
-                            <div className="flex items-center gap-2 text-xs font-medium text-primary-600 dark:text-scientific-accent animate-pulse">
-                              <div className="w-3 h-3 border-2 border-primary-600 dark:border-scientific-accent border-t-transparent rounded-full animate-spin"></div>
-                              <span>Loading batch...</span>
-                            </div>
-                          )}
                           <ColumnSelector
                             columns={
                               viewMode === "clinvar"

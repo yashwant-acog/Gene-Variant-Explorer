@@ -79,7 +79,7 @@ export default function CustomVariantTable({
       case "benign/likely benign":
         return "bg-emerald-400 text-white border-black";
       case "uncertain significance":
-        return "bg-amber-400 text-black border-black";
+        return "bg-amber-400 text-white";
       case "likely pathogenic":
         return "bg-orange-500 text-white border-black";
       case "pathogenic/likely pathogenic":
@@ -370,19 +370,15 @@ export default function CustomVariantTable({
                   }
 
                   if (col.key === "clinvar") {
-                    if (!(v as any).clinvarClassification) {
+                    const clinvarID = (v as any).clinvarVariant_ID;
+                    if (!clinvarID) {
                       renderedValue = (
                         <span className="text-gray-400 font-sans">-</span>
                       );
                     } else {
-                      const cDNA =
-                        (v as any).clinvarTranscript || v.cDNA_change;
-                      const term = encodeURIComponent(
-                        `"${cDNA}"[VARNAME] AND "${gene}"[GENE]`,
-                      );
                       renderedValue = (
                         <Link
-                          href={`https://www.ncbi.nlm.nih.gov/clinvar/?variant=${cDNA}&gene=${gene}&term=${term}`}
+                          href={`https://www.ncbi.nlm.nih.gov/clinvar/variation/${clinvarID}`}
                           className="flex text-blue-600 dark:text-blue-400 font-medium hover:underline"
                           target="_blank"
                         >
@@ -401,14 +397,24 @@ export default function CustomVariantTable({
                   }
 
                   if (col.key === "gnomad") {
-                    if (!(v as any).clinvarClassification) {
+                    const gid =
+                      v.Genomic_ID || (v as any).clinvarGenomicID || "";
+                    const isValidGid =
+                      gid &&
+                      gid.split(":").length === 4 &&
+                      gid
+                        .split(":")
+                        .every((p: string) => p && p !== "undefined") &&
+                      gid !== "Not found";
+
+                    if (!(v as any).clinvarVariant_ID) {
                       renderedValue = (
                         <span className="text-gray-400 font-sans">-</span>
                       );
                     } else {
                       renderedValue = (
                         <Link
-                          href={`https://gnomad.broadinstitute.org/variant/${v.Genomic_ID?.replaceAll(
+                          href={`https://gnomad.broadinstitute.org/variant/${gid.replaceAll(
                             ":",
                             "-",
                           )}?dataset=gnomad_r4`}

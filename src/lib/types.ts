@@ -5,6 +5,7 @@ export interface Variant {
 
     // New specific genetic fields requested
     genomicID?: string;
+    genomicIDs?: string[];
     chromosome: string;
     position: number;
     rsIDs: string[];
@@ -12,6 +13,8 @@ export interface Variant {
     alternate: string;
     transcript: string;
     hgvsConsequence: string;
+    cdnaChanges?: string[];
+    isHaplotype?: boolean;
     proteinConsequence: string;
     vepAnnotation: string;
     clinvarGermlineClassification: string;
