@@ -854,7 +854,7 @@ export default function GeneDashboard() {
 
           {/* Content Container - Scrollable independently */}
           <div className="flex-1 p-4 sm:p-6 flex flex-col gap-6">
-            {isLoading && viewMode === "clinvar" ? (
+            {isLoading ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-10 h-10 border-4 border-primary-500/20 border-t-primary-500 rounded-full animate-spin"></div>
