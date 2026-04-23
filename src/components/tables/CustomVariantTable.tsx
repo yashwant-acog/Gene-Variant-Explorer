@@ -19,7 +19,7 @@ export const CUSTOM_COLUMNS = [
   { key: "ACMG", label: "ACMG Score", group: "Predictive" },
   {
     key: "acmgClassification",
-    label: "ACMG Classification",
+    label: "BMRN (ACMG) Classification",
     group: "Clinical",
   },
   {

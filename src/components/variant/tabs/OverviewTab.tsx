@@ -197,7 +197,7 @@ export default function OverviewTab({
             {/* Left Column - ACMG Classification */}
             <div className="bg-white dark:bg-gray-800/70 px-5 py-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col h-full min-h-[400px]">
               <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2">
-                ACMG Classification (Points-based)
+                BMRN (ACMG) Classification (Points-based)
               </h4>
 
               {isNotScored ? (

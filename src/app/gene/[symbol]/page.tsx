@@ -8,7 +8,11 @@ import CustomVariantTable from "@/components/tables/CustomVariantTable";
 import ScatterPlot, { ScatterDataPoint } from "@/components/charts/ScatterPlot";
 import ACMGDistribution from "@/components/charts/ACMGDistribution";
 import { dummyCustomVariants } from "../../../lib/dummyData";
-import { fetchClinVarVariants } from "@/lib/api";
+import {
+  fetchClinVarVariants,
+  getProteinPosition,
+  getDomainInfo,
+} from "@/lib/api";
 import { Variant } from "@/lib/types";
 import ColumnSelector from "@/components/tables/ColumnSelector";
 import { CLINVAR_COLUMNS } from "@/components/tables/VariantTable";
@@ -187,6 +191,9 @@ export default function GeneDashboard() {
   const [sortOption, setSortOption] = useState<"cdna-asc" | "cdna-desc">(
     "cdna-asc",
   );
+  const [searchField, setSearchField] = useState<
+    "cdna" | "genomic" | "protein"
+  >("cdna");
 
   // Initialize filters and search query from URL ONCE on mount using lazy initialization
   const [filters, setFilters] = useState<FilterState>(() => {
@@ -216,6 +223,8 @@ export default function GeneDashboard() {
         revelMax: searchParams.get("revelMax")
           ? Number(searchParams.get("revelMax"))
           : "",
+        proteinDomains: [],
+        proteinSubdomains: [],
       };
     }
     return {
@@ -228,6 +237,8 @@ export default function GeneDashboard() {
       caddMin: "",
       revelMin: "",
       revelMax: "",
+      proteinDomains: [],
+      proteinSubdomains: [],
     };
   });
 
@@ -395,6 +406,12 @@ export default function GeneDashboard() {
             Meta_height_SE: cv.Meta_height_SE,
             Meta_ratio: cv.Meta_ratio,
             Meta_ratio_SE: cv.Meta_ratio_SE,
+            proteinPosition: getProteinPosition(cv.Protein_change),
+            proteinDomain: getDomainInfo(getProteinPosition(cv.Protein_change))
+              .domain,
+            proteinSubdomain: getDomainInfo(
+              getProteinPosition(cv.Protein_change),
+            ).subdomain,
             acmgClassification: getLabelForPoints(cv.ACMG),
             clinvarClassification: clinvarLookupMap.get(
               normalizeCDNA(cv.cDNA_change),
@@ -439,47 +456,34 @@ export default function GeneDashboard() {
       });
     }
 
-    // 2. Search Query - Different logic for ClinVar vs Custom
+    // 2. Search Query - Based on selected searchField
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((v) => {
-        const formattedProtein = formatProteinConsequence(
-          v.proteinConsequence,
-        ).toLowerCase();
-        const proteinMatch =
-          v.proteinConsequence.toLowerCase().includes(q) ||
-          formattedProtein.includes(q);
-
-        // For ClinVar variants - search rsID, genomicID, variation (preferred_name), and protein
-        if (v.sourceType === "clinvar") {
-          const rsidMatch =
-            v.rsIDs && v.rsIDs.some((rsid) => rsid.toLowerCase().includes(q));
-          const genomicIdMatch =
-            v.genomicID && v.genomicID.toLowerCase().includes(q);
-          const variationMatch =
-            v.clinvar?.rcv?.preferred_name &&
-            v.clinvar.rcv.preferred_name.toLowerCase().includes(q);
-
-          return rsidMatch || genomicIdMatch || variationMatch || proteinMatch;
+        if (searchField === "cdna") {
+          return (
+            (v.hgvsConsequence || "").toLowerCase().includes(q) ||
+            (v.cdnaChanges || []).some((c) => c.toLowerCase().includes(q))
+          );
         }
-
-        // For custom variants - existing search logic
-        const customV = v as any;
-        return (
-          (v?.genomicID && v.genomicID.toLowerCase().includes(q)) ||
-          (v.id && v.id.toLowerCase().includes(q)) ||
-          proteinMatch ||
-          (customV.cDNA_change &&
-            customV.cDNA_change.toLowerCase().includes(q)) ||
-          (customV.Genomic_ID &&
-            customV.Genomic_ID.toLowerCase().includes(q)) ||
-          (customV.Protein_change &&
-            customV.Protein_change.toLowerCase().includes(q)) ||
-          (customV.Protein_change &&
-            formatProteinConsequence(customV.Protein_change)
-              .toLowerCase()
-              .includes(q))
-        );
+        if (searchField === "genomic") {
+          return (
+            (v.genomicID || "").toLowerCase().includes(q) ||
+            (v.genomicIDs || []).some((g) => g.toLowerCase().includes(q)) ||
+            (v as any).Genomic_ID?.toLowerCase().includes(q)
+          );
+        }
+        if (searchField === "protein") {
+          const formattedProtein = formatProteinConsequence(
+            v.proteinConsequence,
+          ).toLowerCase();
+          return (
+            (v.proteinConsequence || "").toLowerCase().includes(q) ||
+            formattedProtein.includes(q) ||
+            (v.proteinChanges || []).some((p) => p.toLowerCase().includes(q))
+          );
+        }
+        return false;
       });
     }
 
@@ -549,6 +553,21 @@ export default function GeneDashboard() {
       );
     }
 
+    // 5. Protein Domains & Subdomains
+    if (filters.proteinDomains.length > 0) {
+      result = result.filter(
+        (v) =>
+          v.proteinDomain && filters.proteinDomains.includes(v.proteinDomain),
+      );
+    }
+    if (filters.proteinSubdomains.length > 0) {
+      result = result.filter(
+        (v) =>
+          v.proteinSubdomain &&
+          filters.proteinSubdomains.includes(v.proteinSubdomain),
+      );
+    }
+
     // 5. Numeric Filters
     if (filters.afMin !== "")
       result = result.filter((v) => v.alleleFrequency >= Number(filters.afMin));
@@ -575,7 +594,15 @@ export default function GeneDashboard() {
     });
 
     return result;
-  }, [clinvarVariants, viewMode, symbol, filters, searchQuery, sortOption]);
+  }, [
+    clinvarVariants,
+    viewMode,
+    symbol,
+    filters,
+    searchQuery,
+    sortOption,
+    searchField,
+  ]);
 
   const classificationScatterData = useMemo(() => {
     return filteredAndSortedVariants
@@ -802,50 +829,54 @@ export default function GeneDashboard() {
                     Syncing ClinVar... ({clinvarVariants.length})
                   </div>
                 )}
-                {/* Search Input */}
-                <div className="relative w-full md:w-60 flex-1 md:flex-none">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg
-                      className="h-4 w-4 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
+                <div className="relative flex-1 group max-w-xl flex gap-1">
+                  <select
+                    value={searchField}
+                    onChange={(e) => setSearchField(e.target.value as any)}
+                    className="text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary-500 transition-colors"
+                  >
+                    <option value="cdna">cDNA</option>
+                    <option value="genomic">Genomic ID</option>
+                    <option value="protein">Protein</option>
+                  </select>
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg
+                        className="h-4 w-4 text-gray-400 dark:text-gray-500 group-focus-within:text-primary-500 transition-colors"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                      placeholder={`Search by ${searchField === "cdna" ? "cDNA" : searchField === "genomic" ? "Genomic ID" : "Protein Change"}...`}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                   </div>
-                  <input
-                    type="text"
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
-                    placeholder="Search cDNA or Protein..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
                 </div>
 
                 {/* Sort Dropdown */}
-                <div className="flex items-center gap-2">
-                  <label
-                    htmlFor="sortOrder"
-                    className="hidden lg:block text-xs text-gray-500 font-medium uppercase tracking-wider"
-                  >
-                    Sort:
-                  </label>
+                <div className="flex items-center">
                   <select
                     id="sortOrder"
                     value={sortOption}
                     onChange={(e) =>
                       setSortOption(e.target.value as "cdna-asc" | "cdna-desc")
                     }
-                    className="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 px-3 py-1.5 outline-none focus:ring-1 focus:ring-primary-500 transition-colors"
+                    className="text-[14px] py-2 text-gray-600 w-[130px] border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary-500 transition-colors font-medium"
                   >
-                    <option value="cdna-asc">cDNA Position (Asc)</option>
-                    <option value="cdna-desc">cDNA Position (Desc)</option>
+                    <option value="cdna-asc">Sort by: cDNA (Asc)</option>
+                    <option value="cdna-desc">Sort by: cDNA (Desc)</option>
                   </select>
                 </div>
               </div>

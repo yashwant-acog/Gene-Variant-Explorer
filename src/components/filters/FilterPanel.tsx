@@ -14,6 +14,8 @@ export interface FilterState {
   caddMin: number | "";
   revelMin: number | "";
   revelMax: number | "";
+  proteinDomains: string[];
+  proteinSubdomains: string[];
 }
 
 interface FilterPanelProps {
@@ -49,6 +51,20 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
     "Benign",
   ];
 
+  const ProteinDomains = [
+    "Extracellular",
+    "Transmembrane",
+    "Cytoplasmic",
+    "Other",
+  ];
+  const ProteinSubdomains = [
+    "Ig-like C2-type 1",
+    "Ig-like C2-type 2",
+    "Ig-like C2-type 3",
+    "Protein kinase",
+    "None",
+  ];
+
   const handleClinvarChange = (cls: string) => {
     setPendingFilters((prev) => {
       const isSelected = prev.clinvarClassifications.includes(cls);
@@ -73,6 +89,30 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
     });
   };
 
+  const handleDomainChange = (domain: string) => {
+    setPendingFilters((prev) => {
+      const isSelected = prev.proteinDomains.includes(domain);
+      return {
+        ...prev,
+        proteinDomains: isSelected
+          ? prev.proteinDomains.filter((d) => d !== domain)
+          : [...prev.proteinDomains, domain],
+      };
+    });
+  };
+
+  const handleSubdomainChange = (subdomain: string) => {
+    setPendingFilters((prev) => {
+      const isSelected = prev.proteinSubdomains.includes(subdomain);
+      return {
+        ...prev,
+        proteinSubdomains: isSelected
+          ? prev.proteinSubdomains.filter((s) => s !== subdomain)
+          : [...prev.proteinSubdomains, subdomain],
+      };
+    });
+  };
+
   const applyFilters = () => {
     setFilters(pendingFilters);
   };
@@ -88,6 +128,8 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
       caddMin: "",
       revelMin: "",
       revelMax: "",
+      proteinDomains: [],
+      proteinSubdomains: [],
     };
     setPendingFilters(initialFilters);
     setFilters(initialFilters);
@@ -149,7 +191,7 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
         <div className="my-2 border-t border-gray-100 dark:border-gray-800" />
 
         {/* ACMG Classifications */}
-        <AccordionSection title="ACMG Classification" defaultOpen={true}>
+        <AccordionSection title="BMRN (ACMG) Classification" defaultOpen={true}>
           <div className="space-y-2 max-h-[300px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
             {ACMGClassifications.map((cls) => (
               <label
@@ -164,6 +206,54 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
                   {cls}
+                </span>
+              </label>
+            ))}
+          </div>
+        </AccordionSection>
+
+        <div className="my-2 border-t border-gray-100 dark:border-gray-800" />
+
+        {/* Protein Domains */}
+        <AccordionSection title="Protein Domain" defaultOpen={true}>
+          <div className="space-y-2 max-h-[300px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
+            {ProteinDomains.map((domain) => (
+              <label
+                key={domain}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <input
+                  type="checkbox"
+                  checked={pendingFilters.proteinDomains.includes(domain)}
+                  onChange={() => handleDomainChange(domain)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
+                  {domain}
+                </span>
+              </label>
+            ))}
+          </div>
+        </AccordionSection>
+
+        <div className="my-2 border-t border-gray-100 dark:border-gray-800" />
+
+        {/* Protein Subdomains */}
+        <AccordionSection title="Protein Subdomain" defaultOpen={true}>
+          <div className="space-y-2 max-h-[300px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
+            {ProteinSubdomains.map((subdomain) => (
+              <label
+                key={subdomain}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <input
+                  type="checkbox"
+                  checked={pendingFilters.proteinSubdomains.includes(subdomain)}
+                  onChange={() => handleSubdomainChange(subdomain)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
+                  {subdomain}
                 </span>
               </label>
             ))}

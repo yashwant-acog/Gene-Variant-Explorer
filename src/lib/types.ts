@@ -16,6 +16,7 @@ export interface Variant {
     cdnaChanges?: string[];
     isHaplotype?: boolean;
     proteinConsequence: string;
+    proteinChanges?: string[];
     vepAnnotation: string;
     clinvarGermlineClassification: string;
     clinvarVariationID: string;
@@ -89,6 +90,20 @@ export interface Variant {
     Meta_height_SE?: string;
     Meta_ratio?: string;
     Meta_ratio_SE?: string;
+    
+    proteinPosition?: number | null;
+    proteinDomain?: string;
+    proteinSubdomain?: string;
+    acmgClassification?: string;
+    clinvarClassification?: string;
+    clinvarConditions?: string[];
+    clinvarTranscript?: string;
+    clinvarVariant_ID?: string;
+    clinvarGenomicID?: string;
+    myvariant_id?: string;
+    customCondition?: string;
+    customGenomicID?: string;
+    customProteinChange?: string;
 
     // ClinVar API response structure
     _id?: string;
@@ -142,10 +157,6 @@ export interface Variant {
         type: string;
         variant_id: number | null;
     };
-    acmgClassification?: string;
-    clinvarClassification?: string;
-    myvariant_id?: string;
-    clinvarVariant_ID?: string;
 }
 
 export interface CustomVariant {

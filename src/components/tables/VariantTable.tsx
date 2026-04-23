@@ -6,7 +6,7 @@ export const CLINVAR_COLUMNS = [
   { key: "genomicID", label: "Genomic ID" },
   { key: "Protein_change", label: "Protein change" },
   { key: "clinvarClassification", label: "ClinVar Classification" },
-  { key: "acmgClassification", label: "ACMG Classification" },
+  { key: "acmgClassification", label: "BMRN (ACMG) Classification" },
   { key: "conditions", label: "ClinVar Conditions" },
   { key: "customCondition", label: "Custom Condition" },
   { key: "clinvar", label: "ClinVar" },
@@ -256,17 +256,36 @@ export default function VariantTable({
                     );
                   }
 
-                  if (col.key === "Protein_change") {
-                    const formattedValue = formatProteinConsequence(
-                      variant.proteinConsequence,
-                      variant.clinvar?.rcv?.preferred_name,
-                      (variant as any).customProteinChange,
-                    );
+                  if (
+                    col.key === "Protein_change" ||
+                    col.key === "proteinConsequence"
+                  ) {
+                    const pList =
+                      variant.proteinChanges &&
+                      variant.proteinChanges.length > 0
+                        ? variant.proteinChanges
+                        : [
+                            formatProteinConsequence(
+                              variant.proteinConsequence,
+                              variant.clinvar?.rcv?.preferred_name,
+                              (variant as any).customProteinChange,
+                            ),
+                          ];
 
                     return (
                       <td key={col.key} className={cellClassName}>
-                        <div className="font-medium text-gray-800 dark:text-gray-200">
-                          {formattedValue}
+                        <div className="flex flex-col space-y-1">
+                          {pList.map((p, idx) => {
+                            if (!p) return null;
+                            return (
+                              <div
+                                key={idx}
+                                className={`font-medium ${p === "Not Provided" ? "text-gray-400 italic text-[10px]" : "text-gray-800 dark:text-gray-200"}`}
+                              >
+                                {p}
+                              </div>
+                            );
+                          })}
                         </div>
                       </td>
                     );
