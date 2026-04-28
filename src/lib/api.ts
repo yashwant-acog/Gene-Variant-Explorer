@@ -235,7 +235,7 @@ class ClinVarDB {
 
 const dbCache = new ClinVarDB();
 // Session-level in-memory cache to handle immediate navigation
-const sessionCache: Record<string, { variants: Variant[], total: number }> = {};
+const sessionCache: Record<string, { variants: Variant[], total: number, timestamp: number }> = {};
 
 /**
  * Fetches ClinVar variants for a given gene symbol using ONLY NCBI API.
@@ -248,9 +248,14 @@ export async function fetchClinVarVariants(
   try {
     // 1. Check Session Cache (fastest - works for navigation)
     if (sessionCache[symbol]) {
-      console.log(`[Cache] Loading ${symbol} from session cache.`);
-      if (onChunk) onChunk(sessionCache[symbol].variants, sessionCache[symbol].total);
-      return sessionCache[symbol];
+      const age = Date.now() - sessionCache[symbol].timestamp;
+      const isFresh = age < 24 * 60 * 60 * 1000; // 24 hours
+      if (isFresh) {
+        console.log(`[Cache] Loading ${symbol} from session cache.`);
+        if (onChunk) onChunk(sessionCache[symbol].variants, sessionCache[symbol].total);
+        return sessionCache[symbol];
+      }
+      console.log(`[Cache] ${symbol} session cache expired. Checking fallback...`);
     }
 
     // 2. Check IndexedDB Cache (works for reloads)
@@ -277,7 +282,7 @@ export async function fetchClinVarVariants(
           return v;
         });
 
-        sessionCache[symbol] = { variants: processedVariants, total: cached.total };
+        sessionCache[symbol] = { variants: processedVariants, total: cached.total, timestamp: Date.now() };
         if (onChunk) onChunk(processedVariants, cached.total);
         return { variants: processedVariants, total: cached.total };
       }
@@ -328,7 +333,7 @@ export async function fetchClinVarVariants(
       }
 
       // 3. Save to Caches after full fetch
-      sessionCache[symbol] = { variants: allNCBIVariants, total: totalCount };
+      sessionCache[symbol] = { variants: allNCBIVariants, total: totalCount, timestamp: Date.now() };
       await dbCache.set(symbol, allNCBIVariants, totalCount);
     }
 

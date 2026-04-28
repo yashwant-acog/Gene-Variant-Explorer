@@ -253,7 +253,7 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
                   className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
-                  {subdomain}
+                  {subdomain === "None" ? "Other" : subdomain}
                 </span>
               </label>
             ))}
