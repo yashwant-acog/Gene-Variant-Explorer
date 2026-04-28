@@ -192,8 +192,8 @@ export default function GeneDashboard() {
     "cdna-asc",
   );
   const [searchField, setSearchField] = useState<
-    "cdna" | "genomic" | "protein"
-  >("cdna");
+    "all" | "cdna" | "genomic" | "protein"
+  >("all");
 
   // Initialize filters and search query from URL ONCE on mount using lazy initialization
   const [filters, setFilters] = useState<FilterState>(() => {
@@ -460,29 +460,32 @@ export default function GeneDashboard() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((v) => {
-        if (searchField === "cdna") {
-          return (
-            (v.hgvsConsequence || "").toLowerCase().includes(q) ||
-            (v.cdnaChanges || []).some((c) => c.toLowerCase().includes(q))
-          );
+        // cDNA matches
+        const matchesCdna =
+          (v.hgvsConsequence || "").toLowerCase().includes(q) ||
+          (v.cdnaChanges || []).some((c) => c.toLowerCase().includes(q));
+
+        // Genomic ID matches
+        const matchesGenomic =
+          (v.genomicID || "").toLowerCase().includes(q) ||
+          (v.genomicIDs || []).some((g) => g.toLowerCase().includes(q)) ||
+          (v as any).Genomic_ID?.toLowerCase().includes(q);
+
+        // Protein matches
+        const formattedProtein = formatProteinConsequence(
+          v.proteinConsequence,
+        ).toLowerCase();
+        const matchesProtein =
+          (v.proteinConsequence || "").toLowerCase().includes(q) ||
+          formattedProtein.includes(q) ||
+          (v.proteinChanges || []).some((p) => p.toLowerCase().includes(q));
+
+        if (searchField === "all") {
+          return matchesCdna || matchesGenomic || matchesProtein;
         }
-        if (searchField === "genomic") {
-          return (
-            (v.genomicID || "").toLowerCase().includes(q) ||
-            (v.genomicIDs || []).some((g) => g.toLowerCase().includes(q)) ||
-            (v as any).Genomic_ID?.toLowerCase().includes(q)
-          );
-        }
-        if (searchField === "protein") {
-          const formattedProtein = formatProteinConsequence(
-            v.proteinConsequence,
-          ).toLowerCase();
-          return (
-            (v.proteinConsequence || "").toLowerCase().includes(q) ||
-            formattedProtein.includes(q) ||
-            (v.proteinChanges || []).some((p) => p.toLowerCase().includes(q))
-          );
-        }
+        if (searchField === "cdna") return matchesCdna;
+        if (searchField === "genomic") return matchesGenomic;
+        if (searchField === "protein") return matchesProtein;
         return false;
       });
     }
@@ -835,6 +838,7 @@ export default function GeneDashboard() {
                     onChange={(e) => setSearchField(e.target.value as any)}
                     className="text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary-500 transition-colors"
                   >
+                    <option value="all">All Fields</option>
                     <option value="cdna">cDNA</option>
                     <option value="genomic">Genomic ID</option>
                     <option value="protein">Protein</option>
@@ -858,7 +862,15 @@ export default function GeneDashboard() {
                     <input
                       type="text"
                       className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
-                      placeholder={`Search by ${searchField === "cdna" ? "cDNA" : searchField === "genomic" ? "Genomic ID" : "Protein Change"}...`}
+                      placeholder={`Search by ${
+                        searchField === "all"
+                          ? "Any Field"
+                          : searchField === "cdna"
+                            ? "cDNA"
+                            : searchField === "genomic"
+                              ? "Genomic ID"
+                              : "Protein Change"
+                      }...`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
