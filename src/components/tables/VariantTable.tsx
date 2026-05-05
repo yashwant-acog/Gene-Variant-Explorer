@@ -1,5 +1,48 @@
+import { useState } from "react";
 import Link from "next/link";
 import { Variant } from "@/lib/types";
+
+const ConditionList = ({
+  conditions,
+  type,
+}: {
+  conditions: string[];
+  type: "clinvar" | "custom";
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!conditions || conditions.length === 0)
+    return <span className="text-gray-400">-</span>;
+
+  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 10);
+  const hasMore = conditions.length > 10;
+
+  const colorClasses =
+    type === "clinvar"
+      ? "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+      : "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800";
+
+  return (
+    <div className="flex flex-wrap gap-1 max-w-[250px]">
+      {displayedConditions.map((cond, idx) => (
+        <span
+          key={idx}
+          className={`px-2 py-0.5 border rounded-full text-[10px] whitespace-nowrap ${colorClasses}`}
+        >
+          {cond}
+        </span>
+      ))}
+      {hasMore && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="px-2 py-0.5 bg-black text-white rounded-full text-[10px] whitespace-nowrap hover:bg-gray-800 cursor-pointer transition-colors"
+        >
+          {isExpanded ? "show less" : "show more"}
+        </button>
+      )}
+    </div>
+  );
+};
 
 export const CLINVAR_COLUMNS = [
   { key: "Variation", label: "cDNA Change" },
@@ -388,19 +431,7 @@ export default function VariantTable({
                     const conditions = variant.conditions || [];
                     return (
                       <td key={col.key} className={cellClassName}>
-                        <div className="flex flex-wrap gap-1 max-w-[250px]">
-                          {conditions.map((cond, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] whitespace-nowrap dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
-                            >
-                              {cond}
-                            </span>
-                          ))}
-                          {conditions.length === 0 && (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </div>
+                        <ConditionList conditions={conditions} type="clinvar" />
                       </td>
                     );
                   }

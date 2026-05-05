@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { CustomVariant } from "@/lib/types";
 
@@ -51,6 +51,48 @@ interface CustomVariantTableProps {
   gene: string;
 }
 
+const ConditionList = ({
+  conditions,
+  type,
+}: {
+  conditions: string[];
+  type: "clinvar" | "custom";
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!conditions || conditions.length === 0)
+    return <span className="text-gray-400">-</span>;
+
+  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 10);
+  const hasMore = conditions.length > 10;
+
+  const colorClasses =
+    type === "clinvar"
+      ? "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+      : "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800";
+
+  return (
+    <div className="flex flex-wrap gap-1 max-w-[250px]">
+      {displayedConditions.map((cond, idx) => (
+        <span
+          key={idx}
+          className={`px-2 py-0.5 border rounded-full text-[10px] whitespace-nowrap ${colorClasses}`}
+        >
+          {cond}
+        </span>
+      ))}
+      {hasMore && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="px-2 py-0.5 bg-black text-white rounded-full text-[10px] whitespace-nowrap hover:bg-gray-800 cursor-pointer transition-colors"
+        >
+          {isExpanded ? "show less" : "show more"}
+        </button>
+      )}
+    </div>
+  );
+};
+
 export default function CustomVariantTable({
   variants,
   visibleColumns,
@@ -73,21 +115,21 @@ export default function CustomVariantTable({
   function getACMGColor(classification: string) {
     switch (classification.toLowerCase()) {
       case "benign":
-        return "bg-emerald-500 text-white border-black";
+        return "bg-emerald-500 text-white";
       case "likely benign":
-        return "bg-emerald-400 text-white border-black";
+        return "bg-emerald-400 text-white";
       case "benign/likely benign":
-        return "bg-emerald-400 text-white border-black";
+        return "bg-emerald-400 text-white";
       case "uncertain significance":
         return "bg-amber-400 text-white";
       case "likely pathogenic":
-        return "bg-orange-500 text-white border-black";
+        return "bg-orange-500 text-white";
       case "pathogenic/likely pathogenic":
-        return "bg-orange-500 text-white border-black";
+        return "bg-orange-500 text-white";
       case "pathogenic":
-        return "bg-red-600 text-white border-black";
+        return "bg-red-600 text-white";
       default:
-        return "bg-gray-400 text-black";
+        return "bg-gray-400 text-white";
     }
   }
 
@@ -362,11 +404,21 @@ export default function CustomVariantTable({
                   }
 
                   if (col.key === "condition") {
-                    renderedValue = value ? (
-                      <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-[10px] whitespace-nowrap dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
-                        {value}
-                      </span>
-                    ) : null;
+                    const conds = value
+                      ? typeof value === "string"
+                        ? value.split(",").map((s: string) => s.trim())
+                        : [String(value)]
+                      : [];
+                    renderedValue = (
+                      <ConditionList conditions={conds} type="custom" />
+                    );
+                  }
+
+                  if (col.key === "clinvarConditions") {
+                    const conds = Array.isArray(value) ? value : [];
+                    renderedValue = (
+                      <ConditionList conditions={conds} type="clinvar" />
+                    );
                   }
 
                   if (col.key === "clinvar") {

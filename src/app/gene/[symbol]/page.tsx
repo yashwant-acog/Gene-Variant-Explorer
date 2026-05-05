@@ -121,7 +121,7 @@ const getCategoryIndex = (points?: string): number => {
 
 const getLabelForPoints = (points?: string): string => {
   const pts = parseFloat(points || "0");
-  if (isNaN(pts)) return "Uncertain Significance";
+  if (isNaN(pts)) return "";
 
   if (pts >= 10) return "Pathogenic";
   if (pts >= 6) return "Likely Pathogenic";
@@ -505,8 +505,8 @@ export default function GeneDashboard() {
     if (filters.clinvarClassifications.length > 0) {
       result = result.filter((v) => {
         const clinvarClassRaw = (
-          v.clinvarGermlineClassification ||
           v.clinvarClassification ||
+          v.clinvarGermlineClassification ||
           ""
         ).toLowerCase();
         if (!clinvarClassRaw || clinvarClassRaw === "custom") return false;
