@@ -25,6 +25,7 @@ export default function VariantPage({ params }: Props) {
   const searchParams = useSearchParams();
   const cDNA = decodeURIComponent(resolvedParams.id);
   const genomicIdFromParam = searchParams.get("genomicId") || "";
+  const geneFromParam = searchParams.get("gene") || "";
 
   const router = useRouter();
 
@@ -32,8 +33,35 @@ export default function VariantPage({ params }: Props) {
   const [clinvarMatches, setClinvarMatches] = useState<any[]>([]);
   const [isClinVarLoading, setIsClinVarLoading] = useState(true);
 
-  // Use genomic ID from params instead of finding from customVariant
-  const customVariant = dummyCustomVariants.find((v) => v.cDNA_change === cDNA);
+  // Find the custom variant - strictly by Genomic ID or cDNA + Gene context
+  const customVariant = useMemo(() => {
+    const gene = geneFromParam?.toUpperCase();
+    const currentChr = genomicIdFromParam?.split(":")[0];
+
+    // 1. Exact Genomic ID match (Highest precision)
+    if (genomicIdFromParam) {
+      const match = dummyCustomVariants.find(
+        (v) => v.Genomic_ID === genomicIdFromParam,
+      );
+      if (match) return match;
+    }
+
+    // 2. cDNA fallback with Gene/Chromosome verification
+    return dummyCustomVariants.find((v) => {
+      const matchCdna = v.cDNA_change === cDNA;
+      if (!matchCdna) return false;
+
+      // Ensure the dummy variant belongs to the correct gene context
+      const dummyChr = v.Genomic_ID?.split(":")[0];
+      if (gene === "FGFR3") return dummyChr === "4";
+      if (gene === "BRCA1") return dummyChr === "17";
+
+      // Fallback: If we have chromosome info from the URL, use it to verify
+      if (currentChr) return dummyChr === currentChr;
+
+      return false;
+    });
+  }, [cDNA, genomicIdFromParam, geneFromParam]);
 
   // Fetch ClinVar matches on mount
   useEffect(() => {
@@ -87,7 +115,7 @@ export default function VariantPage({ params }: Props) {
     };
     variant = {
       id: cDNA,
-      gene: "FGFR3",
+      gene: geneFromParam || "FGFR3",
       disease:
         cv.condition && cv.condition !== "NA"
           ? cv.condition
@@ -172,7 +200,7 @@ export default function VariantPage({ params }: Props) {
   } else {
     variant = {
       id: cDNA,
-      gene: "FGFR3",
+      gene: geneFromParam || "FGFR3",
       disease: "ClinVar Live Data Entry",
       genomicID: cDNA,
       chromosome: "N/A",

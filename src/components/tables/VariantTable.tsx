@@ -270,7 +270,7 @@ export default function VariantTable({
                                   key={idx}
                                   href={`/variant/${encodeURIComponent(
                                     cdna,
-                                  )}?genomicId=${genomicId}&variationID=${variant.clinvarVariationID}&hgvsId=${variant.id}`}
+                                  )}?genomicId=${genomicId}&variationID=${variant.clinvarVariationID}&hgvsId=${variant.id}&gene=${variant.gene}`}
                                   className="text-blue-600 dark:text-blue-400 font-medium hover:underline text-xs"
                                 >
                                   {cdnaOnly}

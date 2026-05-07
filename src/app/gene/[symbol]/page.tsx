@@ -325,7 +325,7 @@ export default function GeneDashboard() {
   const customLookupMap = useMemo(() => {
     const map = new Map<string, any>();
     dummyCustomVariants.forEach((cv: any) => {
-      const key = normalizeCDNA(cv.cDNA_change);
+      const key = cv.Genomic_ID;
       if (key) {
         map.set(key, {
           label: getLabelForPoints(cv.ACMG),
@@ -342,7 +342,7 @@ export default function GeneDashboard() {
   const clinvarLookupMap = useMemo(() => {
     const map = new Map<string, any>();
     clinvarVariants.forEach((v) => {
-      const key = normalizeCDNA(v.hgvsConsequence);
+      const key = v.genomicID;
       if (key) {
         map.set(key, {
           classification: v.clinvarGermlineClassification,
@@ -413,23 +413,13 @@ export default function GeneDashboard() {
               getProteinPosition(cv.Protein_change),
             ).subdomain,
             acmgClassification: getLabelForPoints(cv.ACMG),
-            clinvarClassification: clinvarLookupMap.get(
-              normalizeCDNA(cv.cDNA_change),
-            )?.classification,
-            clinvarConditions: clinvarLookupMap.get(
-              normalizeCDNA(cv.cDNA_change),
-            )?.conditions,
-            clinvarTranscript: clinvarLookupMap.get(
-              normalizeCDNA(cv.cDNA_change),
-            )?.transcript,
-            clinvarVariant_ID: clinvarLookupMap.get(
-              normalizeCDNA(cv.cDNA_change),
-            )?.variationID,
-            clinvarGenomicID: clinvarLookupMap.get(
-              normalizeCDNA(cv.cDNA_change),
-            )?.genomicID,
-            myvariant_id: clinvarLookupMap.get(normalizeCDNA(cv.cDNA_change))
-              ?.id,
+            clinvarClassification: clinvarLookupMap.get(cv.Genomic_ID)
+              ?.classification,
+            clinvarConditions: clinvarLookupMap.get(cv.Genomic_ID)?.conditions,
+            clinvarTranscript: clinvarLookupMap.get(cv.Genomic_ID)?.transcript,
+            clinvarVariant_ID: clinvarLookupMap.get(cv.Genomic_ID)?.variationID,
+            clinvarGenomicID: clinvarLookupMap.get(cv.Genomic_ID)?.genomicID,
+            myvariant_id: clinvarLookupMap.get(cv.Genomic_ID)?.id,
           };
         });
       console.log("Debug: Finished mapping custom variants.");
@@ -437,9 +427,9 @@ export default function GeneDashboard() {
 
     if (viewMode === "clinvar") {
       result = result.map((v) => {
-        const customMatch = customLookupMap.get(
-          normalizeCDNA(v.hgvsConsequence),
-        );
+        const customMatch = v.genomicID
+          ? customLookupMap.get(v.genomicID)
+          : null;
         if (customMatch) {
           console.log(
             `Debug: Matched ClinVar ${v.hgvsConsequence} to custom data.`,

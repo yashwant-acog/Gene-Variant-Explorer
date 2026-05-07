@@ -201,7 +201,7 @@ export default function CustomVariantTable({
                           v.cDNA_change,
                         )}?genomicId=${genomicIdEncoded}&variationID=${
                           (v as any).clinvarVariant_ID || ""
-                        }&hgvsId=${(v as any).myvariant_id || ""}`}
+                        }&hgvsId=${(v as any).myvariant_id || ""}&gene=${gene}`}
                         className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
                       >
                         {value}
