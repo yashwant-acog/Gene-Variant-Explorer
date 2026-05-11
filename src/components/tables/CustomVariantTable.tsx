@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { CustomVariant } from "@/lib/types";
+import { XMLParser } from "fast-xml-parser";
 
 export const CUSTOM_COLUMNS = [
   { key: "cDNA_change", label: "cDNA Change", group: "Identity" },
@@ -27,7 +28,7 @@ export const CUSTOM_COLUMNS = [
     label: "ClinVar Classification",
     group: "Clinical",
   },
-  { key: "Mutation_type", label: "Mutation", group: "Functional" },
+  // { key: "Mutation_type", label: "Mutation", group: "Functional" },
   { key: "Functional", label: "Functional", group: "Functional" },
   {
     key: "Pvalue_functional",
@@ -90,6 +91,122 @@ const ConditionList = ({
         </button>
       )}
     </div>
+  );
+};
+
+const MostSubmissionsButton = ({ variationId }: { variationId: string }) => {
+  const [loading, setLoading] = useState(false);
+  const [bestMatch, setBestMatch] = useState<{
+    condition: string;
+    score: number;
+  } | null>(null);
+
+  const handleCheck = async () => {
+    if (!variationId) return;
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=clinvar&id=${variationId}&rettype=vcv&is_variationid`,
+      );
+      const xmlData = await response.text();
+      const parser = new XMLParser({ ignoreAttributes: false });
+      const data = parser.parse(xmlData);
+
+      const rcvList =
+        data?.["ClinVarResult-Set"]?.VariationArchive?.ClassifiedRecord?.RCVList
+          ?.RCVAccession;
+
+      const accessions = Array.isArray(rcvList)
+        ? rcvList
+        : rcvList
+          ? [rcvList]
+          : [];
+
+      let maxCount = -1;
+      let topCondition = "";
+
+      accessions.forEach((item: any) => {
+        const condition =
+          item?.ClassifiedConditionList?.ClassifiedCondition?.["#text"];
+        const countStr =
+          item?.RCVClassifications?.GermlineClassification?.Description?.[
+            "@_SubmissionCount"
+          ];
+        const count = parseInt(countStr || "0");
+
+        if (
+          condition &&
+          condition.toLowerCase() !== "not provided" &&
+          count > maxCount
+        ) {
+          maxCount = count;
+          topCondition = condition;
+        }
+      });
+
+      if (topCondition) {
+        setBestMatch({ condition: topCondition, score: maxCount });
+      }
+    } catch (error) {
+      console.error("Error fetching most submissions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (bestMatch) {
+    return (
+      <span className="mt-1 px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded text-[10px] whitespace-normal dark:bg-green-900/10 dark:text-green-400 dark:border-green-800/30 animate-in fade-in zoom-in duration-300">
+        Most Submissions: <strong>{bestMatch.condition}</strong> (
+        {bestMatch.score})
+      </span>
+    );
+  }
+
+  return (
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCheck();
+      }}
+      disabled={loading}
+      className="mt-1 px-2 py-1 bg-gray-50 dark:bg-scientific-panel text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-scientific-border rounded text-[10px] hover:bg-gray-100 dark:hover:bg-scientific-header transition-all cursor-pointer flex items-center gap-1.5 w-fit font-medium"
+    >
+      {loading ? (
+        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      ) : (
+        <svg
+          className="w-3 h-3"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+          />
+        </svg>
+      )}
+      Check Most Submissions
+    </button>
   );
 };
 
@@ -416,8 +533,14 @@ export default function CustomVariantTable({
 
                   if (col.key === "clinvarConditions") {
                     const conds = Array.isArray(value) ? value : [];
+                    const clinvarID = (v as any).clinvarVariant_ID;
                     renderedValue = (
-                      <ConditionList conditions={conds} type="clinvar" />
+                      <div className="flex flex-col gap-1">
+                        <ConditionList conditions={conds} type="clinvar" />
+                        {clinvarID && conds.length > 1 && (
+                          <MostSubmissionsButton variationId={clinvarID} />
+                        )}
+                      </div>
                     );
                   }
 

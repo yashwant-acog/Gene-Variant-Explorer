@@ -4,7 +4,7 @@ import React, { use, useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import TabLayout from "@/components/layout/TabLayout";
-import { dummyVariants, dummyCustomVariants } from "@/lib/dummyData";
+import { dummyVariants } from "@/lib/dummyData";
 import { Variant } from "@/lib/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
@@ -28,40 +28,64 @@ export default function VariantPage({ params }: Props) {
   const geneFromParam = searchParams.get("gene") || "";
 
   const router = useRouter();
+  const [customVariant, setCustomVariant] = useState<any | null>(null);
+  const [allGeneVariants, setAllGeneVariants] = useState<any[]>([]);
+  const [isCustomLoading, setIsCustomLoading] = useState(true);
 
   // State for ClinVar matched results
   const [clinvarMatches, setClinvarMatches] = useState<any[]>([]);
   const [isClinVarLoading, setIsClinVarLoading] = useState(true);
 
-  // Find the custom variant - strictly by Genomic ID or cDNA + Gene context
-  const customVariant = useMemo(() => {
-    const gene = geneFromParam?.toUpperCase();
-    const currentChr = genomicIdFromParam?.split(":")[0];
+  // Fetch custom variant from DB
+  useEffect(() => {
+    async function fetchCustomVar() {
+      const g = geneFromParam || "FGFR3";
+      if (!g) return;
 
-    // 1. Exact Genomic ID match (Highest precision)
-    if (genomicIdFromParam) {
-      const match = dummyCustomVariants.find(
-        (v) => v.Genomic_ID === genomicIdFromParam,
-      );
-      if (match) return match;
+      setIsCustomLoading(true);
+      try {
+        const url = `/api/variants/${g}?genomicId=${encodeURIComponent(
+          genomicIdFromParam,
+        )}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            setCustomVariant(data[0]);
+          } else {
+            setCustomVariant(null);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching custom variant:", err);
+      } finally {
+        setIsCustomLoading(false);
+      }
     }
 
-    // 2. cDNA fallback with Gene/Chromosome verification
-    return dummyCustomVariants.find((v) => {
-      const matchCdna = v.cDNA_change === cDNA;
-      if (!matchCdna) return false;
+    if (genomicIdFromParam) {
+      fetchCustomVar();
+    } else {
+      setIsCustomLoading(false);
+    }
+  }, [genomicIdFromParam, geneFromParam]);
 
-      // Ensure the dummy variant belongs to the correct gene context
-      const dummyChr = v.Genomic_ID?.split(":")[0];
-      if (gene === "FGFR3") return dummyChr === "4";
-      if (gene === "BRCA1") return dummyChr === "17";
-
-      // Fallback: If we have chromosome info from the URL, use it to verify
-      if (currentChr) return dummyChr === currentChr;
-
-      return false;
-    });
-  }, [cDNA, genomicIdFromParam, geneFromParam]);
+  // Fetch all variants for the gene (for comparison charts)
+  useEffect(() => {
+    async function fetchAll() {
+      const g = geneFromParam || "FGFR3";
+      try {
+        const res = await fetch(`/api/variants/${g}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAllGeneVariants(data);
+        }
+      } catch (err) {
+        console.error("Error fetching all gene variants:", err);
+      }
+    }
+    fetchAll();
+  }, [geneFromParam]);
 
   // Fetch ClinVar matches on mount
   useEffect(() => {
@@ -304,7 +328,7 @@ export default function VariantPage({ params }: Props) {
       counts[p.name] = [];
     });
 
-    dummyCustomVariants.forEach((v) => {
+    allGeneVariants.forEach((v) => {
       popDefinitions.forEach((p) => {
         const c = parseFloat(v[p.countField as keyof typeof v] as string);
         const n = parseFloat(v[p.numField as keyof typeof v] as string);
@@ -318,7 +342,7 @@ export default function VariantPage({ params }: Props) {
       });
     });
     return { freqs, counts };
-  }, [popDefinitions]);
+  }, [popDefinitions, allGeneVariants]);
 
   const associationStudies = [
     { name: "UK Biobank GWAS", oddsRatio: 1.2, ciLower: 1.05, ciUpper: 1.35 },
@@ -363,14 +387,22 @@ export default function VariantPage({ params }: Props) {
       id: "functional",
       label: "Functional",
       content: (
-        <FunctionalTab variant={variant} isCustom={customVariant !== null} />
+        <FunctionalTab
+          variant={variant}
+          isCustom={customVariant !== null}
+          allGeneVariants={allGeneVariants}
+        />
       ),
     },
     {
       id: "annotation",
       label: "Annotation",
       content: (
-        <AnnotationTab variant={variant} isCustom={customVariant !== null} />
+        <AnnotationTab
+          variant={variant}
+          isCustom={customVariant !== null}
+          allGeneVariants={allGeneVariants}
+        />
       ),
     },
     {
@@ -402,12 +434,37 @@ export default function VariantPage({ params }: Props) {
     // },
   ];
 
+  const filteredTabs = tabs.filter((tab) => {
+    if (tab.id === "functional") {
+      const hasFunctional =
+        variant.Functional &&
+        variant.Functional !== "NA" &&
+        variant.Pvalue_functional &&
+        variant.Pvalue_functional !== "NA";
+      return hasFunctional;
+    }
+    if (tab.id === "associations") {
+      const hasMeta =
+        variant.Meta_height &&
+        variant.Meta_height !== "NA" &&
+        variant.Meta_height_SE &&
+        variant.Meta_height_SE !== "NA" &&
+        variant.Meta_ratio &&
+        variant.Meta_ratio !== "NA" &&
+        variant.Meta_ratio_SE &&
+        variant.Meta_ratio_SE !== "NA";
+      return hasMeta;
+    }
+    return true;
+  });
+
   const handleTabChange = (id: string) => {
     setActiveTabId(id);
   };
 
   const activeTabContent =
-    tabs.find((t) => t.id === activeTabId)?.content || tabs[0].content;
+    filteredTabs.find((t) => t.id === activeTabId)?.content ||
+    filteredTabs[0]?.content;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-scientific-bg">
@@ -466,7 +523,7 @@ export default function VariantPage({ params }: Props) {
             {/* Right Side: Tabs */}
             <div className="w-full md:w-auto">
               <TabLayout
-                tabs={tabs}
+                tabs={filteredTabs}
                 defaultActiveId={activeTabId}
                 onTabChange={handleTabChange}
                 showContent={false}
