@@ -71,7 +71,9 @@ function mapNCBIToVariant(uid: string, data: any): Variant {
     variationSet.forEach((vSet: any) => {
       // Extract cDNA
       let rawCdna = vSet.cdna_change || "";
-      let cleanedCdna = rawCdna.includes(":") ? rawCdna.split(":").pop() || rawCdna : rawCdna;
+      let cleanedCdna = rawCdna.includes(":")
+        ? rawCdna.split(":").pop() || rawCdna
+        : rawCdna;
 
       if (cleanedCdna && !cdnaChanges.includes(cleanedCdna)) {
         cdnaChanges.push(cleanedCdna);
@@ -83,26 +85,38 @@ function mapNCBIToVariant(uid: string, data: any): Variant {
         proteinChanges.push(formattedP);
       }
 
-      // Extract alleles from THIS set's cDNA change
+      // Extract alleles from canonical_spdi if available
+      let spdiRef = "";
+      let spdiAlt = "";
+      if (vSet.canonical_spdi) {
+        const parts = vSet.canonical_spdi.split(":");
+        if (parts.length === 4) {
+          spdiRef = parts[2];
+          spdiAlt = parts[3];
+        }
+      }
+
+      // Fallback: Extract alleles from THIS set's cDNA change
       const alleleMatch = cleanedCdna.match(/([A-Z])>([A-Z])/);
 
       const locs = vSet.variation_loc || [];
       locs.forEach((loc: any) => {
         if (loc.assembly_name === "GRCh38" && loc.status === "current") {
-          // Extract alleles from this specific cDNA if missing in loc record
-          let lRef = loc.ref || "";
-          let lAlt = loc.alt || "";
+          // Priority 1: SPDI Alleles, Priority 2: Location Record, Priority 3: cDNA Match
+          let lRef = spdiRef || loc.ref || "";
+          let lAlt = spdiAlt || loc.alt || "";
+
           if ((!lRef || !lAlt) && alleleMatch) {
             if (!lRef) lRef = alleleMatch[1];
             if (!lAlt) lAlt = alleleMatch[2];
           }
-          
+
           if (loc.chr && loc.start && lRef && lAlt) {
             const gid = `${loc.chr}:${loc.start}:${lRef}:${lAlt}`;
             if (!genomicIDs.includes(gid)) {
               genomicIDs.push(gid);
             }
-            
+
             // Set primary location for standard fields
             if (!primaryLoc) {
               primaryLoc = { ...loc, ref: lRef, alt: lAlt };
