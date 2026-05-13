@@ -111,7 +111,27 @@ export async function POST(
       );
     }
 
-    // Create table if not exists
+    const populations = [
+      "African/African American",
+      "Admixed American",
+      "Ashkenazi Jewish",
+      "East Asian",
+      "European (Finnish)",
+      "Middle Eastern",
+      "European (non-Finnish)",
+      "Amish",
+      "South Asian",
+    ];
+
+    const populationColumns = populations
+      .map(
+        (pop) => `
+        "Allele Count ${pop}" TEXT, 
+        "Allele Number ${pop}" TEXT`,
+      )
+      .join(",");
+
+    // Create table if not exists with all potential columns
     await pool.query(`
       CREATE TABLE IF NOT EXISTS ${tableName} (
         genomic_id TEXT PRIMARY KEY,
@@ -132,51 +152,86 @@ export async function POST(
         "Allele Count" TEXT,
         "Allele Number" TEXT,
         "Allele Frequency" TEXT,
+        ${populationColumns},
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // Insert rows with a transaction
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
+
+      // Dynamic mapping from variant properties to DB columns
+      const fieldMapping: Record<string, string> = {
+        proteinChange: "protein_change",
+        cdnaChange: "cdna_change",
+        condition: "condition",
+        revel: "revel",
+        revel_score: "revel",
+        REVEL: "revel",
+        REVEL_score: "revel",
+        vest4: "vest4_score",
+        vest4_score: "vest4_score",
+        VEST4: "vest4_score",
+        VEST4_score: "vest4_score",
+        mutPred: "mutpred_score",
+        mutpred_score: "mutpred_score",
+        MutPred: "mutpred_score",
+        MutPred_score: "mutpred_score",
+        bayesDel: "bayesdel_addaf_score",
+        bayesdel_addaf_score: "bayesdel_addaf_score",
+        BayesDel: "bayesdel_addaf_score",
+        BayesDel_addAF_score: "bayesdel_addaf_score",
+        acmg: "acmg",
+        functional: "functional",
+        pvalueFunctional: "pvalue_functional",
+        metaHeight: "meta_height",
+        metaHeightSe: "meta_height_se",
+        metaRatio: "meta_ratio",
+        metaRatioSe: "meta_ratio_se",
+        "Allele Count": '"Allele Count"',
+        "Allele Number": '"Allele Number"',
+        "Allele Frequency": '"Allele Frequency"',
+      };
+
+      // Add population mappings
+      populations.forEach((pop) => {
+        fieldMapping[`Allele Count ${pop}`] = `"Allele Count ${pop}"`;
+        fieldMapping[`Allele Number ${pop}`] = `"Allele Number ${pop}"`;
+      });
+
       for (const v of variants) {
-        await client.query(
-          `
-          INSERT INTO ${tableName} (
-            genomic_id, protein_change, cdna_change, condition, 
-            acmg, functional, pvalue_functional, 
-            meta_height, meta_height_se, meta_ratio, meta_ratio_se
-          ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        const columns = ["genomic_id"];
+        const values = [v.id];
+        const placeholders = ["$1"];
+
+        // Dynamically add columns present in the payload
+        Object.entries(fieldMapping).forEach(([jsonKey, dbCol]) => {
+          if (v[jsonKey] !== undefined && v[jsonKey] !== null) {
+            // Avoid adding same DB column twice if multiple jsonKeys map to it
+            if (!columns.includes(dbCol)) {
+              columns.push(dbCol);
+              values.push(v[jsonKey]);
+              placeholders.push(`$${values.length}`);
+            }
+          }
+        });
+
+        const updateSet = columns
+          .filter((c) => c !== "genomic_id")
+          .map((c) => `${c} = EXCLUDED.${c}`)
+          .join(", ");
+
+        const query = `
+          INSERT INTO ${tableName} (${columns.join(", ")})
+          VALUES (${placeholders.join(", ")})
           ON CONFLICT (genomic_id) DO UPDATE SET
-            protein_change = EXCLUDED.protein_change,
-            cdna_change = EXCLUDED.cdna_change,
-            condition = EXCLUDED.condition,
-            acmg = EXCLUDED.acmg,
-            functional = EXCLUDED.functional,
-            pvalue_functional = EXCLUDED.pvalue_functional,
-            meta_height = EXCLUDED.meta_height,
-            meta_height_se = EXCLUDED.meta_height_se,
-            meta_ratio = EXCLUDED.meta_ratio,
-            meta_ratio_se = EXCLUDED.meta_ratio_se,
+            ${updateSet},
             updated_at = NOW()
-        `,
-          [
-            v.id,
-            v.proteinChange,
-            v.cdnaChange,
-            v.condition,
-            v.acmg,
-            v.functional,
-            v.pvalueFunctional,
-            v.metaHeight,
-            v.metaHeightSe,
-            v.metaRatio,
-            v.metaRatioSe,
-          ],
-        );
+        `;
+
+        await client.query(query, values);
       }
       await client.query("COMMIT");
     } catch (e) {

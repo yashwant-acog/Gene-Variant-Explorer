@@ -89,7 +89,7 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
       }
 
       // Map with fallback for optional fields
-      data.push({
+      const variant: any = {
         cdnaChange: row["c.change"] || null,
         proteinChange: row["p.change"] || null,
         id: variantId,
@@ -101,7 +101,48 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
         metaRatio: row["Meta_ratio"] || null,
         metaRatioSe: row["Meta_ratio_SE"] || null,
         condition: row["condition"] || null,
+      };
+
+      // Dynamically add all other relevant columns if present in the CSV headers
+      const extraCols = [
+        "REVEL",
+        "REVEL_score",
+        "VEST4",
+        "VEST4_score",
+        "MutPred",
+        "MutPred_score",
+        "BayesDel",
+        "BayesDel_addAF_score",
+        "Allele Count",
+        "Allele Number",
+        "Allele Frequency",
+        "Allele Count African/African American",
+        "Allele Number African/African American",
+        "Allele Count Admixed American",
+        "Allele Number Admixed American",
+        "Allele Count Ashkenazi Jewish",
+        "Allele Number Ashkenazi Jewish",
+        "Allele Count East Asian",
+        "Allele Number East Asian",
+        "Allele Count European (Finnish)",
+        "Allele Number European (Finnish)",
+        "Allele Count Middle Eastern",
+        "Allele Number Middle Eastern",
+        "Allele Count European (non-Finnish)",
+        "Allele Number European (non-Finnish)",
+        "Allele Count Amish",
+        "Allele Number Amish",
+        "Allele Count South Asian",
+        "Allele Number South Asian",
+      ];
+
+      extraCols.forEach((col) => {
+        if (row[col] !== undefined && row[col] !== "" && row[col] !== null) {
+          variant[col] = row[col];
+        }
       });
+
+      data.push(variant);
     }
 
     if (data.length === 0) {
