@@ -15,8 +15,8 @@ const ConditionList = ({
   if (!conditions || conditions.length === 0)
     return <span className="text-gray-400">-</span>;
 
-  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 10);
-  const hasMore = conditions.length > 10;
+  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 3);
+  const hasMore = conditions.length > 3;
 
   const colorClasses =
     type === "clinvar"
@@ -24,11 +24,11 @@ const ConditionList = ({
       : "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800";
 
   return (
-    <div className="flex flex-wrap gap-1 max-w-[250px]">
+    <div className="flex flex-wrap gap-1 w-[250px]">
       {displayedConditions.map((cond, idx) => (
         <span
           key={idx}
-          className={`px-2 py-0.5 border rounded-full text-[10px] whitespace-nowrap ${colorClasses}`}
+          className={`px-2 py-1 border rounded-md text-[10px] max-w-[250px] whitespace-normal break-words leading-tight inline-block ${colorClasses}`}
         >
           {cond}
         </span>
@@ -41,6 +41,22 @@ const ConditionList = ({
           {isExpanded ? "show less" : "show more"}
         </button>
       )}
+    </div>
+  );
+};
+
+const TruncatedCell = ({
+  text,
+  maxWidth = "max-w-[150px]",
+  className = "",
+}: {
+  text: string;
+  maxWidth?: string;
+  className?: string;
+}) => {
+  return (
+    <div className={`${maxWidth} truncate ${className}`} title={text}>
+      {text}
     </div>
   );
 };
@@ -390,7 +406,10 @@ export default function VariantTable({
                                   )}?genomicId=${genomicId}&variationID=${variant.clinvarVariationID}&hgvsId=${variant.id}&gene=${variant.gene}`}
                                   className="text-blue-600 dark:text-blue-400 font-medium hover:underline text-xs"
                                 >
-                                  {cdnaOnly}
+                                  <TruncatedCell
+                                    text={cdnaOnly}
+                                    maxWidth="max-w-[120px]"
+                                  />
                                 </Link>
                               );
                             })}
@@ -488,7 +507,14 @@ export default function VariantTable({
                               gid !== "Not found";
                             return (
                               <div key={idx} className="text-xs">
-                                {isValid ? gid : gids.length === 1 ? "-" : null}
+                                {isValid ? (
+                                  <TruncatedCell
+                                    text={gid}
+                                    maxWidth="max-w-[140px]"
+                                  />
+                                ) : gids.length === 1 ? (
+                                  "-"
+                                ) : null}
                               </div>
                             );
                           })}
@@ -549,16 +575,16 @@ export default function VariantTable({
                     return (
                       <td key={col.key} className={cellClassName}>
                         <div className="flex flex-col gap-1">
-                          <ConditionList
-                            conditions={conditions}
-                            type="clinvar"
-                          />
                           {variant.clinvarVariationID &&
                             conditions.length > 1 && (
                               <MostSubmissionsButton
                                 variationId={variant.clinvarVariationID}
                               />
                             )}
+                          <ConditionList
+                            conditions={conditions}
+                            type="clinvar"
+                          />
                         </div>
                       </td>
                     );

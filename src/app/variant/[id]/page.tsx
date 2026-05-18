@@ -493,9 +493,23 @@ export default function VariantPage({ params }: Props) {
                   />
                 </svg>
               </button>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
-                {variant.id}
-              </h1>
+              <div className="relative group cursor-help">
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+                  {variant.id.length > 10
+                    ? `${variant.id.slice(0, 10)}...`
+                    : variant.id}
+                </h1>
+                {variant.id.length > 10 && (
+                  <div className="absolute left-0 top-full mt-1 z-50 invisible group-hover:visible bg-black text-white text-[10px] py-1 px-2 rounded shadow-xl whitespace-normal break-words max-w-sm border border-gray-800">
+                    {variant.id}
+                  </div>
+                )}
+              </div>
+              <span
+                className={`px-2 py-1 border text-primary-600 rounded-xl rounded-md text-[15px] max-w-[250px] whitespace-normal break-words leading-tight inline-block`}
+              >
+                {geneFromParam}
+              </span>
               {/* <Link
                 href={`https://gnomad.broadinstitute.org/variant/${variant.Genomic_ID?.replaceAll(
                   ":",

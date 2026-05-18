@@ -64,8 +64,8 @@ const ConditionList = ({
   if (!conditions || conditions.length === 0)
     return <span className="text-gray-400">-</span>;
 
-  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 10);
-  const hasMore = conditions.length > 10;
+  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 3);
+  const hasMore = conditions.length > 3;
 
   const colorClasses =
     type === "clinvar"
@@ -73,11 +73,11 @@ const ConditionList = ({
       : "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800";
 
   return (
-    <div className="flex flex-wrap gap-1 max-w-[250px]">
+    <div className="flex flex-wrap gap-1 w-[250px]">
       {displayedConditions.map((cond, idx) => (
         <span
           key={idx}
-          className={`px-2 py-0.5 border rounded-full text-[10px] whitespace-nowrap ${colorClasses}`}
+          className={`px-2 py-1 border rounded-md text-[10px] max-w-[250px] whitespace-normal break-words leading-tight inline-block ${colorClasses}`}
         >
           {cond}
         </span>
@@ -90,6 +90,22 @@ const ConditionList = ({
           {isExpanded ? "show less" : "show more"}
         </button>
       )}
+    </div>
+  );
+};
+
+const TruncatedCell = ({
+  text,
+  maxWidth = "max-w-[150px]",
+  className = "",
+}: {
+  text: string;
+  maxWidth?: string;
+  className?: string;
+}) => {
+  return (
+    <div className={`${maxWidth} truncate ${className}`} title={text}>
+      {text}
     </div>
   );
 };
@@ -321,8 +337,20 @@ export default function CustomVariantTable({
                         }&hgvsId=${(v as any).myvariant_id || ""}&gene=${gene}`}
                         className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
                       >
-                        {value}
+                        <TruncatedCell
+                          text={v.cDNA_change}
+                          maxWidth="max-w-[120px]"
+                        />
                       </Link>
+                    );
+                  }
+
+                  if (col.key === "Genomic_ID") {
+                    renderedValue = (
+                      <TruncatedCell
+                        text={v.Genomic_ID || ""}
+                        maxWidth="max-w-[140px]"
+                      />
                     );
                   }
 
@@ -368,18 +396,14 @@ export default function CustomVariantTable({
                   if (col.key === "clinvarConditions") {
                     const conditions = (v as any).clinvarConditions || [];
                     renderedValue = (
-                      <div className="flex flex-wrap gap-1">
-                        {conditions.map((cond: string, idx: number) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] whitespace-nowrap dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
-                          >
-                            {cond}
-                          </span>
-                        ))}
-                        {conditions.length === 0 && (
-                          <span className="text-gray-400 font-sans">-</span>
-                        )}
+                      <div className="flex flex-col gap-1">
+                        <ConditionList conditions={conditions} type="clinvar" />
+                        {(v as any).clinvarVariant_ID &&
+                          conditions.length > 1 && (
+                            <MostSubmissionsButton
+                              variationId={(v as any).clinvarVariant_ID}
+                            />
+                          )}
                       </div>
                     );
                   }
@@ -536,10 +560,10 @@ export default function CustomVariantTable({
                     const clinvarID = (v as any).clinvarVariant_ID;
                     renderedValue = (
                       <div className="flex flex-col gap-1">
-                        <ConditionList conditions={conds} type="clinvar" />
                         {clinvarID && conds.length > 1 && (
                           <MostSubmissionsButton variationId={clinvarID} />
                         )}
+                        <ConditionList conditions={conds} type="clinvar" />
                       </div>
                     );
                   }
