@@ -179,6 +179,7 @@ const MostSubmissionsButton = ({ variationId }: { variationId: string }) => {
 
 export const CLINVAR_COLUMNS = [
   { key: "Variation", label: "cDNA Change" },
+  { key: "transcript", label: "Transcript" },
   { key: "genomicID", label: "Genomic ID" },
   { key: "Protein_change", label: "Protein change" },
   { key: "clinvarClassification", label: "ClinVar Classification" },
@@ -431,6 +432,37 @@ export default function VariantTable({
                             </div>
                           </div>
                         )}
+                      </td>
+                    );
+                  }
+
+                  if (col.key === "transcript") {
+                    const title = variant?.clinvar?.rcv?.preferred_name || "";
+                    const nmMatch = title.match(/^(NM_[0-9]+\.[0-9]+)/);
+                    const nmId = nmMatch ? nmMatch[1] : null;
+
+                    const cdnaMatch = title.match(/:(c\.[^ (]+)/);
+                    const cdna = cdnaMatch ? cdnaMatch[1] : "";
+
+                    if (!nmId)
+                      return (
+                        <td key={col.key} className={cellClassName}>
+                          -
+                        </td>
+                      );
+
+                    const searchParam = encodeURIComponent(`${nmId}:${cdna}`);
+                    const href = `https://www.ncbi.nlm.nih.gov/nuccore/${nmId}?report=graph&search=${searchParam}`;
+
+                    return (
+                      <td key={col.key} className={cellClassName}>
+                        <Link
+                          href={href}
+                          target="_blank"
+                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs whitespace-nowrap"
+                        >
+                          {nmId}
+                        </Link>
                       </td>
                     );
                   }
