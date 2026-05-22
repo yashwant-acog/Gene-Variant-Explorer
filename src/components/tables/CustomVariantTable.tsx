@@ -7,6 +7,7 @@ export const CUSTOM_COLUMNS = [
   { key: "cDNA_change", label: "cDNA Change", group: "Identity" },
   { key: "Genomic_ID", label: "Genomic ID", group: "Identity" },
   { key: "Protein_change", label: "Protein Change", group: "Identity" },
+  { key: "transcript", label: "Transcript", group: "Identity" },
   { key: "condition", label: "Conditions", group: "Clinical" },
   {
     key: "clinvarConditions",
@@ -352,6 +353,40 @@ export default function CustomVariantTable({
                         maxWidth="max-w-[140px]"
                       />
                     );
+                  }
+
+                  if (col.key === "transcript") {
+                    let nmId = (v as any).clinvarTranscript || null;
+                    let cdna = v.cDNA_change || "";
+
+                    if (!nmId || nmId === "N/A") {
+                      const title =
+                        (v as any).clinvar?.rcv?.preferred_name || "";
+                      const nmMatch = title.match(/^(NM_[0-9]+\.[0-9]+)/);
+                      nmId = nmMatch ? nmMatch[1] : null;
+
+                      const cdnaMatch = title.match(/:(c\.[^ (]+)/);
+                      if (cdnaMatch) cdna = cdnaMatch[1];
+                    }
+
+                    if (!nmId || nmId === "N/A") {
+                      renderedValue = (
+                        <span className="text-gray-400 font-sans">-</span>
+                      );
+                    } else {
+                      const searchParam = encodeURIComponent(`${nmId}:${cdna}`);
+                      const href = `https://www.ncbi.nlm.nih.gov/nuccore/${nmId}?report=graph&search=${searchParam}`;
+
+                      renderedValue = (
+                        <Link
+                          href={href}
+                          target="_blank"
+                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs whitespace-nowrap"
+                        >
+                          {nmId}
+                        </Link>
+                      );
+                    }
                   }
 
                   if (

@@ -179,9 +179,9 @@ const MostSubmissionsButton = ({ variationId }: { variationId: string }) => {
 
 export const CLINVAR_COLUMNS = [
   { key: "Variation", label: "cDNA Change" },
-  { key: "transcript", label: "Transcript" },
   { key: "genomicID", label: "Genomic ID" },
   { key: "Protein_change", label: "Protein change" },
+  { key: "transcript", label: "Transcript" },
   { key: "clinvarClassification", label: "ClinVar Classification" },
   { key: "acmgClassification", label: "BMRN (ACMG) Classification" },
   { key: "conditions", label: "ClinVar Conditions" },

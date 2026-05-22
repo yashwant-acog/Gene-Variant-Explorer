@@ -182,6 +182,7 @@ export default function GeneDashboard() {
   );
   const [visibleCustomColumns, setVisibleCustomColumns] = useState<string[]>([
     "cDNA_change",
+    "transcript",
     "Genomic_ID",
     "Protein_change",
     "Mutation_type",
