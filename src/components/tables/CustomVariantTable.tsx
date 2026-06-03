@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { CustomVariant } from "@/lib/types";
 import { XMLParser } from "fast-xml-parser";
 
-export const CUSTOM_COLUMNS = [
+const BASE_CUSTOM_COLUMNS = [
   { key: "cDNA_change", label: "cDNA Change", group: "Identity" },
   { key: "Genomic_ID", label: "Genomic ID", group: "Identity" },
   { key: "Protein_change", label: "Protein Change", group: "Identity" },
@@ -29,7 +29,6 @@ export const CUSTOM_COLUMNS = [
     label: "ClinVar Classification",
     group: "Clinical",
   },
-  // { key: "Mutation_type", label: "Mutation", group: "Functional" },
   { key: "Functional", label: "Functional", group: "Functional" },
   {
     key: "Pvalue_functional",
@@ -38,14 +37,41 @@ export const CUSTOM_COLUMNS = [
   },
   { key: "clinvar", label: "ClinVar", group: "Public Sources" },
   { key: "gnomad", label: "gnomAD", group: "Public Sources" },
-  { key: "Meta_height", label: "Meta Height", group: "Enrichment (H)" },
-  { key: "Meta_height_SE", label: "Meta Height SE", group: "Enrichment (H)" },
-  { key: "Meta_ratio", label: "Meta Ratio", group: "Enrichment (R)" },
-  { key: "Meta_ratio_SE", label: "Meta Ratio SE", group: "Enrichment (R)" },
   { key: "Allele Count", label: "Allele Count", group: "Population" },
   { key: "Allele Number", label: "Allele Num", group: "Population" },
   { key: "Allele Frequency", label: "Allele Freq", group: "Population" },
 ];
+
+export const getCustomColumns = (variants: any[]) => {
+  const columns = [...BASE_CUSTOM_COLUMNS];
+
+  // Dynamically find all Phenotype_ columns
+  const phenotypeKeys = new Set<string>();
+  variants.forEach((v) => {
+    Object.keys(v).forEach((k) => {
+      if (k.startsWith("Phenotype_")) {
+        phenotypeKeys.add(k);
+      }
+    });
+  });
+
+  // Add them to the columns list
+  Array.from(phenotypeKeys)
+    .sort()
+    .forEach((key) => {
+      const cleanName = key.replace("Phenotype_", "").replace(/_/g, " ");
+      const group = key.toLowerCase().endsWith("_se")
+        ? "Association (SE)"
+        : "Association";
+      columns.push({
+        key,
+        label: cleanName,
+        group,
+      });
+    });
+
+  return columns;
+};
 
 interface CustomVariantTableProps {
   variants: CustomVariant[];
@@ -240,11 +266,16 @@ export default function CustomVariantTable({
     );
   }
 
-  const columns = visibleColumns
-    ? CUSTOM_COLUMNS.filter((col) => visibleColumns.includes(col.key))
-    : CUSTOM_COLUMNS;
+  const allAvailableColumns = useMemo(
+    () => getCustomColumns(variants),
+    [variants],
+  );
 
-  const groups = Array.from(new Set(columns.map((c) => c.group)));
+  const columns = visibleColumns
+    ? allAvailableColumns.filter((col: any) => visibleColumns.includes(col.key))
+    : allAvailableColumns;
+
+  const groups = Array.from(new Set(columns.map((c: any) => c.group)));
 
   function getACMGColor(classification: string) {
     switch (classification.toLowerCase()) {
@@ -290,8 +321,8 @@ export default function CustomVariantTable({
             </tr>
 
             {/* Column Headers */}
-            <tr className="bg- dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border text-xs font-semibold text-gray-700 dark:text-gray-200">
-              {columns.map((col, idx) => (
+            <tr className="bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border text-xs font-semibold text-gray-700 dark:text-gray-200">
+              {columns.map((col: any, idx: number) => (
                 <th
                   key={idx}
                   className="px-4 py-3 border-r border-gray-200 dark:border-scientific-border last:border-r-0 whitespace-nowrap sticky top-[28px] bg-white dark:bg-scientific-panel z-30"
@@ -303,12 +334,12 @@ export default function CustomVariantTable({
           </thead>
 
           <tbody className="divide-y divide-gray-200 dark:divide-scientific-border bg-white dark:bg-transparent">
-            {variants.map((v, vIdx) => (
+            {variants.map((v: any, vIdx: number) => (
               <tr
                 key={vIdx}
                 className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
               >
-                {columns.map((col, cIdx) => {
+                {columns.map((col: any, cIdx: number) => {
                   const value = (v as any)[col.key];
                   let renderedValue: React.ReactNode = value;
 
@@ -557,15 +588,8 @@ export default function CustomVariantTable({
                       ) : null;
                   }
 
-                  // Meta analysis columns
-                  if (
-                    [
-                      "Meta_height",
-                      "Meta_height_SE",
-                      "Meta_ratio",
-                      "Meta_ratio_SE",
-                    ].includes(col.key)
-                  ) {
+                  // Phenotype / Meta analysis columns
+                  if (col.key.startsWith("Phenotype_")) {
                     renderedValue =
                       value && value !== "NA" ? (
                         <span className="font-mono text-xs">

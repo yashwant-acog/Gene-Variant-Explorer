@@ -159,6 +159,7 @@ export interface Variant {
         type: string;
         variant_id: number | null;
     };
+    [key: string]: any;
 }
 
 export interface CustomVariant {

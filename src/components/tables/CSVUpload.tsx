@@ -89,55 +89,26 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
       }
 
       // Map with fallback for optional fields
+      // Use the exact names from CSV that the user specified
       const variant: any = {
         cdnaChange: row["c.change"] || null,
         proteinChange: row["p.change"] || null,
         id: variantId,
         acmg: row["ACMG"] || null,
         functional: row["Functional"] || null,
-        pvalueFunctional: row["Functional_Pvalue"] || null,
-        metaHeight: row["Meta_height"] || null,
-        metaHeightSe: row["Meta_height_SE"] || null,
-        metaRatio: row["Meta_ratio"] || null,
-        metaRatioSe: row["Meta_ratio_SE"] || null,
+        pvalueFunctional:
+          row["Pvalue_functional"] || row["Functional_Pvalue"] || null,
         condition: row["condition"] || null,
       };
 
-      // Dynamically add all other relevant columns if present in the CSV headers
-      const extraCols = [
-        "REVEL",
-        "REVEL_score",
-        "VEST4",
-        "VEST4_score",
-        "MutPred",
-        "MutPred_score",
-        "BayesDel",
-        "BayesDel_addAF_score",
-        "Allele Count",
-        "Allele Number",
-        "Allele Frequency",
-        "Allele Count African/African American",
-        "Allele Number African/African American",
-        "Allele Count Admixed American",
-        "Allele Number Admixed American",
-        "Allele Count Ashkenazi Jewish",
-        "Allele Number Ashkenazi Jewish",
-        "Allele Count East Asian",
-        "Allele Number East Asian",
-        "Allele Count European (Finnish)",
-        "Allele Number European (Finnish)",
-        "Allele Count Middle Eastern",
-        "Allele Number Middle Eastern",
-        "Allele Count European (non-Finnish)",
-        "Allele Number European (non-Finnish)",
-        "Allele Count Amish",
-        "Allele Number Amish",
-        "Allele Count South Asian",
-        "Allele Number South Asian",
-      ];
-
-      extraCols.forEach((col) => {
-        if (row[col] !== undefined && row[col] !== "" && row[col] !== null) {
+      // Dynamically add ALL columns present in the CSV to ensure Phenotype_ and other tags are preserved
+      Object.keys(row).forEach((col) => {
+        if (
+          row[col] !== undefined &&
+          row[col] !== "" &&
+          row[col] !== null &&
+          !variant[col]
+        ) {
           variant[col] = row[col];
         }
       });

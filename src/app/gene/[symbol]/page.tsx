@@ -16,7 +16,7 @@ import {
 import { Variant } from "@/lib/types";
 import ColumnSelector from "@/components/tables/ColumnSelector";
 import { CLINVAR_COLUMNS } from "@/components/tables/VariantTable";
-import { CUSTOM_COLUMNS } from "@/components/tables/CustomVariantTable";
+import { getCustomColumns } from "@/components/tables/CustomVariantTable";
 import Navbar from "@/components/layout/Navbar";
 
 // type SortOption =
@@ -381,6 +381,11 @@ export default function GeneDashboard() {
     return map;
   }, [clinvarVariants]);
 
+  const dynamicCustomColumns = useMemo(
+    () => getCustomColumns(customVariants),
+    [customVariants],
+  );
+
   const filteredAndSortedVariants = useMemo(() => {
     // Initial dataset based on view mode
     let result: Variant[] = [];
@@ -391,6 +396,7 @@ export default function GeneDashboard() {
       result = customVariants.map((cv: any) => {
         const genomicParts = (cv.Genomic_ID || "").split(":");
         return {
+          ...cv,
           id: cv.cDNA_change || "N/A",
           gene: symbol?.toUpperCase() || "FGFR3",
           disease: cv.condition || "Custom Analysis",
@@ -424,10 +430,6 @@ export default function GeneDashboard() {
           MutPred_score: cv.MutPred_score,
           BayesDel_addAF_score: cv.BayesDel_addAF_score,
           ACMG: cv.ACMG,
-          Meta_height: cv.Meta_height,
-          Meta_height_SE: cv.Meta_height_SE,
-          Meta_ratio: cv.Meta_ratio,
-          Meta_ratio_SE: cv.Meta_ratio_SE,
           proteinPosition: getProteinPosition(cv.Protein_change),
           proteinDomain: getDomainInfo(getProteinPosition(cv.Protein_change))
             .domain,
@@ -1076,7 +1078,7 @@ export default function GeneDashboard() {
                             columns={
                               viewMode === "clinvar"
                                 ? CLINVAR_COLUMNS
-                                : CUSTOM_COLUMNS
+                                : dynamicCustomColumns
                             }
                             visibleColumns={
                               viewMode === "clinvar"

@@ -204,22 +204,15 @@ export default function VariantPage({ params }: Props) {
       alleleCountSouthAsian: parseSci(cv["Allele Count South Asian"]),
       alleleNumberSouthAsian: parseSci(cv["Allele Number South Asian"]),
 
-      sourceType: "custom",
-      conditions: cv.condition && cv.condition !== "NA" ? [cv.condition] : [],
-      Mutation_type: cv.Mutation_type,
-      REVEL: cv?.REVEL,
-      condition: cv?.condition,
-      Genomic_ID: cv?.Genomic_ID,
-      Functional: cv.Functional,
-      Pvalue_functional: cv.Pvalue_functional,
-      VEST4_score: cv.VEST4_score,
-      MutPred_score: cv.MutPred_score,
-      BayesDel_addAF_score: cv.BayesDel_addAF_score,
-      ACMG: cv.ACMG,
-      Meta_height: cv.Meta_height,
-      Meta_height_SE: cv.Meta_height_SE,
-      Meta_ratio: cv.Meta_ratio,
-      Meta_ratio_SE: cv.Meta_ratio_SE,
+      ...cv,
+      Functional: cv.Functional || cv.functional,
+      Pvalue_functional: cv.Pvalue_functional || cv.pvalue_functional,
+      Meta_height: cv.Meta_height || cv.meta_height || cv.Phenotype_Meta_height,
+      Meta_height_SE:
+        cv.Meta_height_SE || cv.meta_height_se || cv.Phenotype_Meta_height_SE,
+      Meta_ratio: cv.Meta_ratio || cv.meta_ratio || cv.Phenotype_Meta_ratio,
+      Meta_ratio_SE:
+        cv.Meta_ratio_SE || cv.meta_ratio_se || cv.Phenotype_Meta_ratio_SE,
     };
   } else {
     variant = {
@@ -436,24 +429,17 @@ export default function VariantPage({ params }: Props) {
 
   const filteredTabs = tabs.filter((tab) => {
     if (tab.id === "functional") {
-      const hasFunctional =
-        variant.Functional &&
-        variant.Functional !== "NA" &&
-        variant.Pvalue_functional &&
-        variant.Pvalue_functional !== "NA";
-      return hasFunctional;
+      const hasFunctionalScore =
+        variant.Functional && variant.Functional !== "NA";
+      const hasFunctionalPval =
+        variant.Pvalue_functional && variant.Pvalue_functional !== "NA";
+      return hasFunctionalScore || hasFunctionalPval;
     }
     if (tab.id === "associations") {
-      const hasMeta =
-        variant.Meta_height &&
-        variant.Meta_height !== "NA" &&
-        variant.Meta_height_SE &&
-        variant.Meta_height_SE !== "NA" &&
-        variant.Meta_ratio &&
-        variant.Meta_ratio !== "NA" &&
-        variant.Meta_ratio_SE &&
-        variant.Meta_ratio_SE !== "NA";
-      return hasMeta;
+      const hasPhenotypeKeys = Object.keys(variant).some((k) =>
+        k.startsWith("Phenotype_"),
+      );
+      return hasPhenotypeKeys;
     }
     return true;
   });
