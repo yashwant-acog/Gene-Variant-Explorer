@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Variant } from "@/lib/types";
+import { XMLParser } from "fast-xml-parser";
 
 const ConditionList = ({
   conditions,
@@ -14,8 +15,8 @@ const ConditionList = ({
   if (!conditions || conditions.length === 0)
     return <span className="text-gray-400">-</span>;
 
-  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 10);
-  const hasMore = conditions.length > 10;
+  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 3);
+  const hasMore = conditions.length > 3;
 
   const colorClasses =
     type === "clinvar"
@@ -23,11 +24,11 @@ const ConditionList = ({
       : "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800";
 
   return (
-    <div className="flex flex-wrap gap-1 max-w-[250px]">
+    <div className="flex flex-wrap gap-1 w-[250px]">
       {displayedConditions.map((cond, idx) => (
         <span
           key={idx}
-          className={`px-2 py-0.5 border rounded-full text-[10px] whitespace-nowrap ${colorClasses}`}
+          className={`px-2 py-1 border rounded-md text-[10px] max-w-[250px] whitespace-normal break-words leading-tight inline-block ${colorClasses}`}
         >
           {cond}
         </span>
@@ -44,10 +45,143 @@ const ConditionList = ({
   );
 };
 
+const TruncatedCell = ({
+  text,
+  maxWidth = "max-w-[150px]",
+  className = "",
+}: {
+  text: string;
+  maxWidth?: string;
+  className?: string;
+}) => {
+  return (
+    <div className={`${maxWidth} truncate ${className}`} title={text}>
+      {text}
+    </div>
+  );
+};
+
+const MostSubmissionsButton = ({ variationId }: { variationId: string }) => {
+  const [loading, setLoading] = useState(false);
+  const [bestMatch, setBestMatch] = useState<{
+    condition: string;
+    score: number;
+  } | null>(null);
+
+  const handleCheck = async () => {
+    if (!variationId) return;
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=clinvar&id=${variationId}&rettype=vcv&is_variationid`,
+      );
+      const xmlData = await response.text();
+      const parser = new XMLParser({ ignoreAttributes: false });
+      const data = parser.parse(xmlData);
+
+      const rcvList =
+        data?.["ClinVarResult-Set"]?.VariationArchive?.ClassifiedRecord?.RCVList
+          ?.RCVAccession;
+
+      const accessions = Array.isArray(rcvList)
+        ? rcvList
+        : rcvList
+          ? [rcvList]
+          : [];
+
+      let maxCount = -1;
+      let topCondition = "";
+
+      accessions.forEach((item: any) => {
+        const condition =
+          item?.ClassifiedConditionList?.ClassifiedCondition?.["#text"];
+        const countStr =
+          item?.RCVClassifications?.GermlineClassification?.Description?.[
+            "@_SubmissionCount"
+          ];
+        const count = parseInt(countStr || "0");
+
+        if (
+          condition &&
+          condition.toLowerCase() !== "not provided" &&
+          count > maxCount
+        ) {
+          maxCount = count;
+          topCondition = condition;
+        }
+      });
+
+      if (topCondition) {
+        setBestMatch({ condition: topCondition, score: maxCount });
+      }
+    } catch (error) {
+      console.error("Error fetching most submissions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (bestMatch) {
+    return (
+      <span className="mt-1 px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded text-[10px] whitespace-normal dark:bg-green-900/10 dark:text-green-400 dark:border-green-800/30 animate-in fade-in zoom-in duration-300">
+        Most Submissions: <strong>{bestMatch.condition}</strong> (
+        {bestMatch.score})
+      </span>
+    );
+  }
+
+  return (
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCheck();
+      }}
+      disabled={loading}
+      className="mt-1 px-2 py-1 bg-gray-50 dark:bg-scientific-panel text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-scientific-border rounded text-[10px] hover:bg-gray-100 dark:hover:bg-scientific-header transition-all cursor-pointer flex items-center gap-1.5 w-fit font-medium"
+    >
+      {loading ? (
+        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      ) : (
+        <svg
+          className="w-3 h-3"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+          />
+        </svg>
+      )}
+      Check Most Submissions
+    </button>
+  );
+};
+
 export const CLINVAR_COLUMNS = [
   { key: "Variation", label: "cDNA Change" },
   { key: "genomicID", label: "Genomic ID" },
   { key: "Protein_change", label: "Protein change" },
+  { key: "transcript", label: "Transcript" },
   { key: "clinvarClassification", label: "ClinVar Classification" },
   { key: "acmgClassification", label: "BMRN (ACMG) Classification" },
   { key: "conditions", label: "ClinVar Conditions" },
@@ -273,7 +407,10 @@ export default function VariantTable({
                                   )}?genomicId=${genomicId}&variationID=${variant.clinvarVariationID}&hgvsId=${variant.id}&gene=${variant.gene}`}
                                   className="text-blue-600 dark:text-blue-400 font-medium hover:underline text-xs"
                                 >
-                                  {cdnaOnly}
+                                  <TruncatedCell
+                                    text={cdnaOnly}
+                                    maxWidth="max-w-[120px]"
+                                  />
                                 </Link>
                               );
                             })}
@@ -295,6 +432,37 @@ export default function VariantTable({
                             </div>
                           </div>
                         )}
+                      </td>
+                    );
+                  }
+
+                  if (col.key === "transcript") {
+                    const title = variant?.clinvar?.rcv?.preferred_name || "";
+                    const nmMatch = title.match(/^(NM_[0-9]+\.[0-9]+)/);
+                    const nmId = nmMatch ? nmMatch[1] : null;
+
+                    const cdnaMatch = title.match(/:(c\.[^ (]+)/);
+                    const cdna = cdnaMatch ? cdnaMatch[1] : "";
+
+                    if (!nmId)
+                      return (
+                        <td key={col.key} className={cellClassName}>
+                          -
+                        </td>
+                      );
+
+                    const searchParam = encodeURIComponent(`${nmId}:${cdna}`);
+                    const href = `https://www.ncbi.nlm.nih.gov/nuccore/${nmId}?report=graph&search=${searchParam}`;
+
+                    return (
+                      <td key={col.key} className={cellClassName}>
+                        <Link
+                          href={href}
+                          target="_blank"
+                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs whitespace-nowrap"
+                        >
+                          {nmId}
+                        </Link>
                       </td>
                     );
                   }
@@ -371,7 +539,14 @@ export default function VariantTable({
                               gid !== "Not found";
                             return (
                               <div key={idx} className="text-xs">
-                                {isValid ? gid : gids.length === 1 ? "-" : null}
+                                {isValid ? (
+                                  <TruncatedCell
+                                    text={gid}
+                                    maxWidth="max-w-[140px]"
+                                  />
+                                ) : gids.length === 1 ? (
+                                  "-"
+                                ) : null}
                               </div>
                             );
                           })}
@@ -431,7 +606,18 @@ export default function VariantTable({
                     const conditions = variant.conditions || [];
                     return (
                       <td key={col.key} className={cellClassName}>
-                        <ConditionList conditions={conditions} type="clinvar" />
+                        <div className="flex flex-col gap-1">
+                          {variant.clinvarVariationID &&
+                            conditions.length > 1 && (
+                              <MostSubmissionsButton
+                                variationId={variant.clinvarVariationID}
+                              />
+                            )}
+                          <ConditionList
+                            conditions={conditions}
+                            type="clinvar"
+                          />
+                        </div>
                       </td>
                     );
                   }

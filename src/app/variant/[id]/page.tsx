@@ -4,7 +4,7 @@ import React, { use, useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import TabLayout from "@/components/layout/TabLayout";
-import { dummyVariants, dummyCustomVariants } from "@/lib/dummyData";
+import { dummyVariants } from "@/lib/dummyData";
 import { Variant } from "@/lib/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
@@ -28,40 +28,64 @@ export default function VariantPage({ params }: Props) {
   const geneFromParam = searchParams.get("gene") || "";
 
   const router = useRouter();
+  const [customVariant, setCustomVariant] = useState<any | null>(null);
+  const [allGeneVariants, setAllGeneVariants] = useState<any[]>([]);
+  const [isCustomLoading, setIsCustomLoading] = useState(true);
 
   // State for ClinVar matched results
   const [clinvarMatches, setClinvarMatches] = useState<any[]>([]);
   const [isClinVarLoading, setIsClinVarLoading] = useState(true);
 
-  // Find the custom variant - strictly by Genomic ID or cDNA + Gene context
-  const customVariant = useMemo(() => {
-    const gene = geneFromParam?.toUpperCase();
-    const currentChr = genomicIdFromParam?.split(":")[0];
+  // Fetch custom variant from DB
+  useEffect(() => {
+    async function fetchCustomVar() {
+      const g = geneFromParam || "FGFR3";
+      if (!g) return;
 
-    // 1. Exact Genomic ID match (Highest precision)
-    if (genomicIdFromParam) {
-      const match = dummyCustomVariants.find(
-        (v) => v.Genomic_ID === genomicIdFromParam,
-      );
-      if (match) return match;
+      setIsCustomLoading(true);
+      try {
+        const url = `/api/variants/${g}?genomicId=${encodeURIComponent(
+          genomicIdFromParam,
+        )}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            setCustomVariant(data[0]);
+          } else {
+            setCustomVariant(null);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching custom variant:", err);
+      } finally {
+        setIsCustomLoading(false);
+      }
     }
 
-    // 2. cDNA fallback with Gene/Chromosome verification
-    return dummyCustomVariants.find((v) => {
-      const matchCdna = v.cDNA_change === cDNA;
-      if (!matchCdna) return false;
+    if (genomicIdFromParam) {
+      fetchCustomVar();
+    } else {
+      setIsCustomLoading(false);
+    }
+  }, [genomicIdFromParam, geneFromParam]);
 
-      // Ensure the dummy variant belongs to the correct gene context
-      const dummyChr = v.Genomic_ID?.split(":")[0];
-      if (gene === "FGFR3") return dummyChr === "4";
-      if (gene === "BRCA1") return dummyChr === "17";
-
-      // Fallback: If we have chromosome info from the URL, use it to verify
-      if (currentChr) return dummyChr === currentChr;
-
-      return false;
-    });
-  }, [cDNA, genomicIdFromParam, geneFromParam]);
+  // Fetch all variants for the gene (for comparison charts)
+  useEffect(() => {
+    async function fetchAll() {
+      const g = geneFromParam || "FGFR3";
+      try {
+        const res = await fetch(`/api/variants/${g}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAllGeneVariants(data);
+        }
+      } catch (err) {
+        console.error("Error fetching all gene variants:", err);
+      }
+    }
+    fetchAll();
+  }, [geneFromParam]);
 
   // Fetch ClinVar matches on mount
   useEffect(() => {
@@ -180,22 +204,15 @@ export default function VariantPage({ params }: Props) {
       alleleCountSouthAsian: parseSci(cv["Allele Count South Asian"]),
       alleleNumberSouthAsian: parseSci(cv["Allele Number South Asian"]),
 
-      sourceType: "custom",
-      conditions: cv.condition && cv.condition !== "NA" ? [cv.condition] : [],
-      Mutation_type: cv.Mutation_type,
-      REVEL: cv?.REVEL,
-      condition: cv?.condition,
-      Genomic_ID: cv?.Genomic_ID,
-      Functional: cv.Functional,
-      Pvalue_functional: cv.Pvalue_functional,
-      VEST4_score: cv.VEST4_score,
-      MutPred_score: cv.MutPred_score,
-      BayesDel_addAF_score: cv.BayesDel_addAF_score,
-      ACMG: cv.ACMG,
-      Meta_height: cv.Meta_height,
-      Meta_height_SE: cv.Meta_height_SE,
-      Meta_ratio: cv.Meta_ratio,
-      Meta_ratio_SE: cv.Meta_ratio_SE,
+      ...cv,
+      Functional: cv.Functional || cv.functional,
+      Pvalue_functional: cv.Pvalue_functional || cv.pvalue_functional,
+      Meta_height: cv.Meta_height || cv.meta_height || cv.Phenotype_Meta_height,
+      Meta_height_SE:
+        cv.Meta_height_SE || cv.meta_height_se || cv.Phenotype_Meta_height_SE,
+      Meta_ratio: cv.Meta_ratio || cv.meta_ratio || cv.Phenotype_Meta_ratio,
+      Meta_ratio_SE:
+        cv.Meta_ratio_SE || cv.meta_ratio_se || cv.Phenotype_Meta_ratio_SE,
     };
   } else {
     variant = {
@@ -304,7 +321,7 @@ export default function VariantPage({ params }: Props) {
       counts[p.name] = [];
     });
 
-    dummyCustomVariants.forEach((v) => {
+    allGeneVariants.forEach((v) => {
       popDefinitions.forEach((p) => {
         const c = parseFloat(v[p.countField as keyof typeof v] as string);
         const n = parseFloat(v[p.numField as keyof typeof v] as string);
@@ -318,7 +335,7 @@ export default function VariantPage({ params }: Props) {
       });
     });
     return { freqs, counts };
-  }, [popDefinitions]);
+  }, [popDefinitions, allGeneVariants]);
 
   const associationStudies = [
     { name: "UK Biobank GWAS", oddsRatio: 1.2, ciLower: 1.05, ciUpper: 1.35 },
@@ -363,14 +380,22 @@ export default function VariantPage({ params }: Props) {
       id: "functional",
       label: "Functional",
       content: (
-        <FunctionalTab variant={variant} isCustom={customVariant !== null} />
+        <FunctionalTab
+          variant={variant}
+          isCustom={customVariant !== null}
+          allGeneVariants={allGeneVariants}
+        />
       ),
     },
     {
       id: "annotation",
       label: "Annotation",
       content: (
-        <AnnotationTab variant={variant} isCustom={customVariant !== null} />
+        <AnnotationTab
+          variant={variant}
+          isCustom={customVariant !== null}
+          allGeneVariants={allGeneVariants}
+        />
       ),
     },
     {
@@ -402,12 +427,30 @@ export default function VariantPage({ params }: Props) {
     // },
   ];
 
+  const filteredTabs = tabs.filter((tab) => {
+    if (tab.id === "functional") {
+      const hasFunctionalScore =
+        variant.Functional && variant.Functional !== "NA";
+      const hasFunctionalPval =
+        variant.Pvalue_functional && variant.Pvalue_functional !== "NA";
+      return hasFunctionalScore || hasFunctionalPval;
+    }
+    if (tab.id === "associations") {
+      const hasPhenotypeKeys = Object.keys(variant).some((k) =>
+        k.startsWith("Phenotype_"),
+      );
+      return hasPhenotypeKeys;
+    }
+    return true;
+  });
+
   const handleTabChange = (id: string) => {
     setActiveTabId(id);
   };
 
   const activeTabContent =
-    tabs.find((t) => t.id === activeTabId)?.content || tabs[0].content;
+    filteredTabs.find((t) => t.id === activeTabId)?.content ||
+    filteredTabs[0]?.content;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-scientific-bg">
@@ -436,9 +479,23 @@ export default function VariantPage({ params }: Props) {
                   />
                 </svg>
               </button>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
-                {variant.id}
-              </h1>
+              <div className="relative group cursor-help">
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+                  {variant.id.length > 10
+                    ? `${variant.id.slice(0, 10)}...`
+                    : variant.id}
+                </h1>
+                {variant.id.length > 10 && (
+                  <div className="absolute left-0 top-full mt-1 z-50 invisible group-hover:visible bg-black text-white text-[10px] py-1 px-2 rounded shadow-xl whitespace-normal break-words max-w-sm border border-gray-800">
+                    {variant.id}
+                  </div>
+                )}
+              </div>
+              <span
+                className={`px-2 py-1 border text-primary-600 rounded-xl rounded-md text-[15px] max-w-[250px] whitespace-normal break-words leading-tight inline-block`}
+              >
+                {geneFromParam}
+              </span>
               {/* <Link
                 href={`https://gnomad.broadinstitute.org/variant/${variant.Genomic_ID?.replaceAll(
                   ":",
@@ -466,7 +523,7 @@ export default function VariantPage({ params }: Props) {
             {/* Right Side: Tabs */}
             <div className="w-full md:w-auto">
               <TabLayout
-                tabs={tabs}
+                tabs={filteredTabs}
                 defaultActiveId={activeTabId}
                 onTabChange={handleTabChange}
                 showContent={false}

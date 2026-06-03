@@ -58,6 +58,18 @@ export default function OverviewTab({
   }, [variationID, hgvsId]);
 
   const hasClinVarMatches = clinvarMatches && clinvarMatches.length > 0;
+
+  // Extract fallback protein change from ClinVar API data
+  const proteinChangeFromClinVar = variationID
+    ? ncbiData?.result?.[variationID]?.protein_change
+    : null;
+  const displayProteinChange =
+    variant.proteinConsequence &&
+    variant.proteinConsequence !== "NA" &&
+    variant.proteinConsequence !== ""
+      ? variant.proteinConsequence
+      : proteinChangeFromClinVar || "NA";
+
   const pointsField = variant.ACMG || "0";
   const pts = parseFloat(pointsField);
 
@@ -126,7 +138,7 @@ export default function OverviewTab({
   return (
     <div className="space-y-4">
       {/* Compact info cards with horizontal layout */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
           <h3 className="text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
             Genomic ID
@@ -140,24 +152,13 @@ export default function OverviewTab({
         </div>
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
           <h3 className="text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
-            Mutation Type
-          </h3>
-          <p
-            className="text-xs font-mono font-semibold text-gray-900 dark:text-gray-100 truncate"
-            title={variant.Mutation_type}
-          >
-            {variant.Mutation_type || "NA"}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h3 className="text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
             Protein Change
           </h3>
           <p
             className="text-xs font-mono font-semibold text-gray-900 dark:text-gray-100 truncate"
-            title={variant.proteinConsequence}
+            title={displayProteinChange}
           >
-            {variant.proteinConsequence || "NA"}
+            {displayProteinChange}
           </p>
         </div>
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">

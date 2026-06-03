@@ -104,6 +104,8 @@ export interface Variant {
     customCondition?: string;
     customGenomicID?: string;
     customProteinChange?: string;
+    Protein_change?: string;
+    cDNA_change?: string;
 
     // ClinVar API response structure
     _id?: string;
@@ -157,6 +159,7 @@ export interface Variant {
         type: string;
         variant_id: number | null;
     };
+    [key: string]: any;
 }
 
 export interface CustomVariant {

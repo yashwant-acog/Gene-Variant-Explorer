@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { CustomVariant } from "@/lib/types";
+import { XMLParser } from "fast-xml-parser";
 
-export const CUSTOM_COLUMNS = [
+const BASE_CUSTOM_COLUMNS = [
   { key: "cDNA_change", label: "cDNA Change", group: "Identity" },
   { key: "Genomic_ID", label: "Genomic ID", group: "Identity" },
   { key: "Protein_change", label: "Protein Change", group: "Identity" },
+  { key: "transcript", label: "Transcript", group: "Identity" },
   { key: "condition", label: "Conditions", group: "Clinical" },
   {
     key: "clinvarConditions",
@@ -27,7 +29,6 @@ export const CUSTOM_COLUMNS = [
     label: "ClinVar Classification",
     group: "Clinical",
   },
-  { key: "Mutation_type", label: "Mutation", group: "Functional" },
   { key: "Functional", label: "Functional", group: "Functional" },
   {
     key: "Pvalue_functional",
@@ -36,14 +37,41 @@ export const CUSTOM_COLUMNS = [
   },
   { key: "clinvar", label: "ClinVar", group: "Public Sources" },
   { key: "gnomad", label: "gnomAD", group: "Public Sources" },
-  { key: "Meta_height", label: "Meta Height", group: "Enrichment (H)" },
-  { key: "Meta_height_SE", label: "Meta Height SE", group: "Enrichment (H)" },
-  { key: "Meta_ratio", label: "Meta Ratio", group: "Enrichment (R)" },
-  { key: "Meta_ratio_SE", label: "Meta Ratio SE", group: "Enrichment (R)" },
   { key: "Allele Count", label: "Allele Count", group: "Population" },
   { key: "Allele Number", label: "Allele Num", group: "Population" },
   { key: "Allele Frequency", label: "Allele Freq", group: "Population" },
 ];
+
+export const getCustomColumns = (variants: any[]) => {
+  const columns = [...BASE_CUSTOM_COLUMNS];
+
+  // Dynamically find all Phenotype_ columns
+  const phenotypeKeys = new Set<string>();
+  variants.forEach((v) => {
+    Object.keys(v).forEach((k) => {
+      if (k.startsWith("Phenotype_")) {
+        phenotypeKeys.add(k);
+      }
+    });
+  });
+
+  // Add them to the columns list
+  Array.from(phenotypeKeys)
+    .sort()
+    .forEach((key) => {
+      const cleanName = key.replace("Phenotype_", "").replace(/_/g, " ");
+      const group = key.toLowerCase().endsWith("_se")
+        ? "Association (SE)"
+        : "Association";
+      columns.push({
+        key,
+        label: cleanName,
+        group,
+      });
+    });
+
+  return columns;
+};
 
 interface CustomVariantTableProps {
   variants: CustomVariant[];
@@ -63,8 +91,8 @@ const ConditionList = ({
   if (!conditions || conditions.length === 0)
     return <span className="text-gray-400">-</span>;
 
-  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 10);
-  const hasMore = conditions.length > 10;
+  const displayedConditions = isExpanded ? conditions : conditions.slice(0, 3);
+  const hasMore = conditions.length > 3;
 
   const colorClasses =
     type === "clinvar"
@@ -72,11 +100,11 @@ const ConditionList = ({
       : "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800";
 
   return (
-    <div className="flex flex-wrap gap-1 max-w-[250px]">
+    <div className="flex flex-wrap gap-1 w-[250px]">
       {displayedConditions.map((cond, idx) => (
         <span
           key={idx}
-          className={`px-2 py-0.5 border rounded-full text-[10px] whitespace-nowrap ${colorClasses}`}
+          className={`px-2 py-1 border rounded-md text-[10px] max-w-[250px] whitespace-normal break-words leading-tight inline-block ${colorClasses}`}
         >
           {cond}
         </span>
@@ -93,6 +121,138 @@ const ConditionList = ({
   );
 };
 
+const TruncatedCell = ({
+  text,
+  maxWidth = "max-w-[150px]",
+  className = "",
+}: {
+  text: string;
+  maxWidth?: string;
+  className?: string;
+}) => {
+  return (
+    <div className={`${maxWidth} truncate ${className}`} title={text}>
+      {text}
+    </div>
+  );
+};
+
+const MostSubmissionsButton = ({ variationId }: { variationId: string }) => {
+  const [loading, setLoading] = useState(false);
+  const [bestMatch, setBestMatch] = useState<{
+    condition: string;
+    score: number;
+  } | null>(null);
+
+  const handleCheck = async () => {
+    if (!variationId) return;
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=clinvar&id=${variationId}&rettype=vcv&is_variationid`,
+      );
+      const xmlData = await response.text();
+      const parser = new XMLParser({ ignoreAttributes: false });
+      const data = parser.parse(xmlData);
+
+      const rcvList =
+        data?.["ClinVarResult-Set"]?.VariationArchive?.ClassifiedRecord?.RCVList
+          ?.RCVAccession;
+
+      const accessions = Array.isArray(rcvList)
+        ? rcvList
+        : rcvList
+          ? [rcvList]
+          : [];
+
+      let maxCount = -1;
+      let topCondition = "";
+
+      accessions.forEach((item: any) => {
+        const condition =
+          item?.ClassifiedConditionList?.ClassifiedCondition?.["#text"];
+        const countStr =
+          item?.RCVClassifications?.GermlineClassification?.Description?.[
+            "@_SubmissionCount"
+          ];
+        const count = parseInt(countStr || "0");
+
+        if (
+          condition &&
+          condition.toLowerCase() !== "not provided" &&
+          count > maxCount
+        ) {
+          maxCount = count;
+          topCondition = condition;
+        }
+      });
+
+      if (topCondition) {
+        setBestMatch({ condition: topCondition, score: maxCount });
+      }
+    } catch (error) {
+      console.error("Error fetching most submissions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (bestMatch) {
+    return (
+      <span className="mt-1 px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded text-[10px] whitespace-normal dark:bg-green-900/10 dark:text-green-400 dark:border-green-800/30 animate-in fade-in zoom-in duration-300">
+        Most Submissions: <strong>{bestMatch.condition}</strong> (
+        {bestMatch.score})
+      </span>
+    );
+  }
+
+  return (
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCheck();
+      }}
+      disabled={loading}
+      className="mt-1 px-2 py-1 bg-gray-50 dark:bg-scientific-panel text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-scientific-border rounded text-[10px] hover:bg-gray-100 dark:hover:bg-scientific-header transition-all cursor-pointer flex items-center gap-1.5 w-fit font-medium"
+    >
+      {loading ? (
+        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      ) : (
+        <svg
+          className="w-3 h-3"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+          />
+        </svg>
+      )}
+      Check Most Submissions
+    </button>
+  );
+};
+
 export default function CustomVariantTable({
   variants,
   visibleColumns,
@@ -106,11 +266,16 @@ export default function CustomVariantTable({
     );
   }
 
-  const columns = visibleColumns
-    ? CUSTOM_COLUMNS.filter((col) => visibleColumns.includes(col.key))
-    : CUSTOM_COLUMNS;
+  const allAvailableColumns = useMemo(
+    () => getCustomColumns(variants),
+    [variants],
+  );
 
-  const groups = Array.from(new Set(columns.map((c) => c.group)));
+  const columns = visibleColumns
+    ? allAvailableColumns.filter((col: any) => visibleColumns.includes(col.key))
+    : allAvailableColumns;
+
+  const groups = Array.from(new Set(columns.map((c: any) => c.group)));
 
   function getACMGColor(classification: string) {
     switch (classification.toLowerCase()) {
@@ -156,8 +321,8 @@ export default function CustomVariantTable({
             </tr>
 
             {/* Column Headers */}
-            <tr className="bg- dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border text-xs font-semibold text-gray-700 dark:text-gray-200">
-              {columns.map((col, idx) => (
+            <tr className="bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border text-xs font-semibold text-gray-700 dark:text-gray-200">
+              {columns.map((col: any, idx: number) => (
                 <th
                   key={idx}
                   className="px-4 py-3 border-r border-gray-200 dark:border-scientific-border last:border-r-0 whitespace-nowrap sticky top-[28px] bg-white dark:bg-scientific-panel z-30"
@@ -169,12 +334,12 @@ export default function CustomVariantTable({
           </thead>
 
           <tbody className="divide-y divide-gray-200 dark:divide-scientific-border bg-white dark:bg-transparent">
-            {variants.map((v, vIdx) => (
+            {variants.map((v: any, vIdx: number) => (
               <tr
                 key={vIdx}
                 className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
               >
-                {columns.map((col, cIdx) => {
+                {columns.map((col: any, cIdx: number) => {
                   const value = (v as any)[col.key];
                   let renderedValue: React.ReactNode = value;
 
@@ -204,9 +369,55 @@ export default function CustomVariantTable({
                         }&hgvsId=${(v as any).myvariant_id || ""}&gene=${gene}`}
                         className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
                       >
-                        {value}
+                        <TruncatedCell
+                          text={v.cDNA_change}
+                          maxWidth="max-w-[120px]"
+                        />
                       </Link>
                     );
+                  }
+
+                  if (col.key === "Genomic_ID") {
+                    renderedValue = (
+                      <TruncatedCell
+                        text={v.Genomic_ID || ""}
+                        maxWidth="max-w-[140px]"
+                      />
+                    );
+                  }
+
+                  if (col.key === "transcript") {
+                    let nmId = (v as any).clinvarTranscript || null;
+                    let cdna = v.cDNA_change || "";
+
+                    if (!nmId || nmId === "N/A") {
+                      const title =
+                        (v as any).clinvar?.rcv?.preferred_name || "";
+                      const nmMatch = title.match(/^(NM_[0-9]+\.[0-9]+)/);
+                      nmId = nmMatch ? nmMatch[1] : null;
+
+                      const cdnaMatch = title.match(/:(c\.[^ (]+)/);
+                      if (cdnaMatch) cdna = cdnaMatch[1];
+                    }
+
+                    if (!nmId || nmId === "N/A") {
+                      renderedValue = (
+                        <span className="text-gray-400 font-sans">-</span>
+                      );
+                    } else {
+                      const searchParam = encodeURIComponent(`${nmId}:${cdna}`);
+                      const href = `https://www.ncbi.nlm.nih.gov/nuccore/${nmId}?report=graph&search=${searchParam}`;
+
+                      renderedValue = (
+                        <Link
+                          href={href}
+                          target="_blank"
+                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs whitespace-nowrap"
+                        >
+                          {nmId}
+                        </Link>
+                      );
+                    }
                   }
 
                   if (
@@ -251,18 +462,14 @@ export default function CustomVariantTable({
                   if (col.key === "clinvarConditions") {
                     const conditions = (v as any).clinvarConditions || [];
                     renderedValue = (
-                      <div className="flex flex-wrap gap-1">
-                        {conditions.map((cond: string, idx: number) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] whitespace-nowrap dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
-                          >
-                            {cond}
-                          </span>
-                        ))}
-                        {conditions.length === 0 && (
-                          <span className="text-gray-400 font-sans">-</span>
-                        )}
+                      <div className="flex flex-col gap-1">
+                        <ConditionList conditions={conditions} type="clinvar" />
+                        {(v as any).clinvarVariant_ID &&
+                          conditions.length > 1 && (
+                            <MostSubmissionsButton
+                              variationId={(v as any).clinvarVariant_ID}
+                            />
+                          )}
                       </div>
                     );
                   }
@@ -381,15 +588,8 @@ export default function CustomVariantTable({
                       ) : null;
                   }
 
-                  // Meta analysis columns
-                  if (
-                    [
-                      "Meta_height",
-                      "Meta_height_SE",
-                      "Meta_ratio",
-                      "Meta_ratio_SE",
-                    ].includes(col.key)
-                  ) {
+                  // Phenotype / Meta analysis columns
+                  if (col.key.startsWith("Phenotype_")) {
                     renderedValue =
                       value && value !== "NA" ? (
                         <span className="font-mono text-xs">
@@ -416,8 +616,14 @@ export default function CustomVariantTable({
 
                   if (col.key === "clinvarConditions") {
                     const conds = Array.isArray(value) ? value : [];
+                    const clinvarID = (v as any).clinvarVariant_ID;
                     renderedValue = (
-                      <ConditionList conditions={conds} type="clinvar" />
+                      <div className="flex flex-col gap-1">
+                        {clinvarID && conds.length > 1 && (
+                          <MostSubmissionsButton variationId={clinvarID} />
+                        )}
+                        <ConditionList conditions={conds} type="clinvar" />
+                      </div>
                     );
                   }
 

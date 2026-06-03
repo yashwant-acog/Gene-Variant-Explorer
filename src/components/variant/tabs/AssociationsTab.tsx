@@ -7,61 +7,55 @@ interface AssociationsTabProps {
 }
 
 export default function AssociationsTab({ variant }: AssociationsTabProps) {
-  // Prepare combined forest plot data for both Meta_height and Meta_ratio
+  // Prepare dynamic forest plot data from Phenotype_ columns
   const combinedData = useMemo(() => {
     const studies: ForestPlotData[] = [];
+    const colors = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
-    // Process Meta_height
-    const metaHeight = variant.Meta_height;
-    const metaHeightSE = variant.Meta_height_SE;
+    // Process all dynamic Phenotype_ columns
+    Object.keys(variant).forEach((key, index) => {
+      // Find keys starting with Phenotype_ that are likely the main effect/score (not the error term)
+      if (
+        key.startsWith("Phenotype_") &&
+        !key.toLowerCase().endsWith("_se") &&
+        !key.toLowerCase().endsWith("_err") &&
+        !key.toLowerCase().endsWith("_std")
+      ) {
+        const baseName = key.replace("Phenotype_", "");
+        const valStr = variant[key];
 
-    if (
-      metaHeight !== undefined &&
-      metaHeightSE !== undefined &&
-      metaHeight !== "NA" &&
-      metaHeightSE !== "NA" &&
-      !isNaN(parseFloat(metaHeight)) &&
-      !isNaN(parseFloat(metaHeightSE))
-    ) {
-      const height = parseFloat(metaHeight);
-      const se = parseFloat(metaHeightSE);
-      const ciLower = height - 1.96 * se;
-      const ciUpper = height + 1.96 * se;
+        // Try to find a matching SE/Error key with different casing and naming conventions
+        const seKey =
+          Object.keys(variant).find(
+            (k) =>
+              k.toLowerCase() === (key + "_SE").toLowerCase() ||
+              k.toLowerCase() === (key + "_se").toLowerCase() ||
+              k.toLowerCase() === (key + "_err").toLowerCase() ||
+              k.toLowerCase() === (key + "_std").toLowerCase(),
+          ) || `${key}_SE`;
 
-      studies.push({
-        name: `Meta Height`,
-        oddsRatio: height,
-        ciLower: ciLower,
-        ciUpper: ciUpper,
-        color: "#8b5cf6",
-      });
-    }
+        const seStr = variant[seKey];
 
-    // Process Meta_ratio
-    const metaRatio = variant.Meta_ratio;
-    const metaRatioSE = variant.Meta_ratio_SE;
-
-    if (
-      metaRatio !== undefined &&
-      metaRatioSE !== undefined &&
-      metaRatio !== "NA" &&
-      metaRatioSE !== "NA" &&
-      !isNaN(parseFloat(metaRatio)) &&
-      !isNaN(parseFloat(metaRatioSE))
-    ) {
-      const ratio = parseFloat(metaRatio);
-      const se = parseFloat(metaRatioSE);
-      const ciLower = ratio - 1.96 * se;
-      const ciUpper = ratio + 1.96 * se;
-
-      studies.push({
-        name: `Meta Ratio`,
-        oddsRatio: ratio,
-        ciLower: ciLower,
-        ciUpper: ciUpper,
-        color: "#3b82f6",
-      });
-    }
+        if (
+          valStr !== undefined &&
+          seStr !== undefined &&
+          valStr !== "NA" &&
+          seStr !== "NA"
+        ) {
+          const val = parseFloat(valStr);
+          const se = parseFloat(seStr);
+          if (!isNaN(val) && !isNaN(se)) {
+            studies.push({
+              name: baseName.replace(/_/g, " "),
+              oddsRatio: val,
+              ciLower: val - 1.96 * se,
+              ciUpper: val + 1.96 * se,
+              color: colors[studies.length % colors.length],
+            });
+          }
+        }
+      }
+    });
 
     return studies;
   }, [variant]);
@@ -87,10 +81,10 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
                   d="M19 11l-7 7-7-7"
                 />
               </svg>
-              Meta-Analysis Associations
+              Phenotype Associations
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Forest plots showing meta-analysis results for height and ratio associations.
+              Forest plots showing associations for user-defined phenotypes.
             </p>
           </div>
         </div>
@@ -105,33 +99,32 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
                 xAxisTitle="Effect Size / Ratio"
                 xAxisType="linear"
                 nullEffect={0}
-                height={220}
+                height={Math.max(220, combinedData.length * 60)}
               />
             </div>
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {combinedData.some(d => d.name === "Meta Height") && (
-                <div className="p-4 bg-purple-50/50 dark:bg-purple-900/10 rounded-lg border border-purple-100/50 dark:border-purple-800/20">
-                  <span className="block text-[10px] font-bold text-purple-500 dark:text-purple-400 uppercase tracking-widest mb-1">
-                    Meta Height
-                  </span>
-                  <p className="text-xs text-purple-800 dark:text-purple-200 leading-relaxed">
-                    <strong>Effect:</strong> Beta coefficient with 95% CI (±1.96×SE). 
-                    Reference line at 0 (no effect).
+              {combinedData.map((study, idx) => (
+                <div
+                  key={idx}
+                  className="p-4 bg-gray-50/50 dark:bg-gray-800/20 rounded-lg border border-gray-100 dark:border-gray-700"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: study.color }}
+                    ></div>
+                    <span className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                      {study.name}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                    <strong>Effect:</strong> {study.oddsRatio.toFixed(3)} with
+                    95% CI ({study.ciLower.toFixed(3)} to{" "}
+                    {study.ciUpper.toFixed(3)}).
                   </p>
                 </div>
-              )}
-              {combinedData.some(d => d.name === "Meta Ratio") && (
-                <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100/50 dark:border-blue-800/20">
-                  <span className="block text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-1">
-                    Meta Ratio
-                  </span>
-                  <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
-                    <strong>Ratio:</strong> Effect ratio with 95% CI (±1.96×SE). 
-                    Reference line at 0 (no effect).
-                  </p>
-                </div>
-              )}
+              ))}
             </div>
           </>
         ) : (
@@ -150,10 +143,11 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
               />
             </svg>
             <h4 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">
-              No Meta-Analysis Data
+              No Association Data
             </h4>
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
-              The selected variant does not have valid Meta_height or Meta_ratio data to plot.
+              The selected variant does not have columns starting with
+              "Phenotype_" to plot.
             </p>
           </div>
         )}

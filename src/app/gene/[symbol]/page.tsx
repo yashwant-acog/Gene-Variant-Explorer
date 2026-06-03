@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import FilterPanel, { FilterState } from "@/components/filters/FilterPanel";
 import VariantTable from "@/components/tables/VariantTable";
 import CustomVariantTable from "@/components/tables/CustomVariantTable";
+import CSVUpload from "@/components/tables/CSVUpload";
 import ScatterPlot, { ScatterDataPoint } from "@/components/charts/ScatterPlot";
 import ACMGDistribution from "@/components/charts/ACMGDistribution";
-import { dummyCustomVariants } from "../../../lib/dummyData";
 import {
   fetchClinVarVariants,
   getProteinPosition,
@@ -16,7 +16,7 @@ import {
 import { Variant } from "@/lib/types";
 import ColumnSelector from "@/components/tables/ColumnSelector";
 import { CLINVAR_COLUMNS } from "@/components/tables/VariantTable";
-import { CUSTOM_COLUMNS } from "@/components/tables/CustomVariantTable";
+import { getCustomColumns } from "@/components/tables/CustomVariantTable";
 import Navbar from "@/components/layout/Navbar";
 
 // type SortOption =
@@ -170,7 +170,9 @@ export default function GeneDashboard() {
   // const [sortOption, setSortOption] = useState<SortOption>("id-asc");
   const [clinvarVariants, setClinvarVariants] = useState<Variant[]>([]);
   const [clinvarTotal, setClinvarTotal] = useState(0);
+  const [customVariants, setCustomVariants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCustomLoading, setIsCustomLoading] = useState(true);
   const [isClinvarSyncing, setIsClinvarSyncing] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -180,6 +182,7 @@ export default function GeneDashboard() {
   );
   const [visibleCustomColumns, setVisibleCustomColumns] = useState<string[]>([
     "cDNA_change",
+    "transcript",
     "Genomic_ID",
     "Protein_change",
     "Mutation_type",
@@ -321,10 +324,31 @@ export default function GeneDashboard() {
     };
   }, [symbol]);
 
+  const fetchCustomData = async () => {
+    if (!symbol) return;
+    setIsCustomLoading(true);
+    try {
+      const res = await fetch(`/api/variants/${symbol}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCustomVariants(data);
+      }
+    } catch (err) {
+      console.error("Error fetching custom variants:", err);
+    } finally {
+      setIsCustomLoading(false);
+    }
+  };
+
+  // Fetch custom variants from our database
+  useEffect(() => {
+    fetchCustomData();
+  }, [symbol]);
+
   // Lookup maps for O(1) cross-dataset access
   const customLookupMap = useMemo(() => {
     const map = new Map<string, any>();
-    dummyCustomVariants.forEach((cv: any) => {
+    customVariants.forEach((cv: any) => {
       const key = cv.Genomic_ID;
       if (key) {
         map.set(key, {
@@ -337,7 +361,7 @@ export default function GeneDashboard() {
     });
     console.log(`Debug: customLookupMap created with ${map.size} entries.`);
     return map;
-  }, []);
+  }, [customVariants]);
 
   const clinvarLookupMap = useMemo(() => {
     const map = new Map<string, any>();
@@ -357,6 +381,11 @@ export default function GeneDashboard() {
     return map;
   }, [clinvarVariants]);
 
+  const dynamicCustomColumns = useMemo(
+    () => getCustomColumns(customVariants),
+    [customVariants],
+  );
+
   const filteredAndSortedVariants = useMemo(() => {
     // Initial dataset based on view mode
     let result: Variant[] = [];
@@ -364,64 +393,58 @@ export default function GeneDashboard() {
     if (viewMode === "clinvar") {
       result = clinvarVariants;
     } else {
-      result = dummyCustomVariants
-        .filter((v: any) => symbol?.toUpperCase() === "FGFR3")
-        .map((cv: any) => {
-          const genomicParts = (cv.Genomic_ID || "").split(":");
-          return {
-            id: cv.cDNA_change || "N/A",
-            gene: symbol?.toUpperCase() || "FGFR3",
-            disease: cv.condition || "Custom Analysis",
-            chromosome: genomicParts[0] || "N/A",
-            position: parseInt(genomicParts[1]) || 0,
-            rsIDs: [],
-            reference: genomicParts[2] || "N/A",
-            alternate: genomicParts[3] || "N/A",
-            transcript: "N/A",
-            hgvsConsequence: cv.cDNA_change || "",
-            proteinConsequence: cv.Protein_change || "",
-            vepAnnotation: "missense_variant",
-            clinvarGermlineClassification: "Custom",
-            clinvarVariationID: "",
-            alleleFrequency: parseFloat(cv["Allele Frequency"]) || 0,
-            REVEL: parseFloat(cv.REVEL) || 0,
-            Mutation_type: cv.Mutation_type,
+      result = customVariants.map((cv: any) => {
+        const genomicParts = (cv.Genomic_ID || "").split(":");
+        return {
+          ...cv,
+          id: cv.cDNA_change || "N/A",
+          gene: symbol?.toUpperCase() || "FGFR3",
+          disease: cv.condition || "Custom Analysis",
+          chromosome: genomicParts[0] || "N/A",
+          position: parseInt(genomicParts[1]) || 0,
+          rsIDs: [],
+          reference: genomicParts[2] || "N/A",
+          alternate: genomicParts[3] || "N/A",
+          transcript: "N/A",
+          hgvsConsequence: cv.cDNA_change || "",
+          proteinConsequence: cv.Protein_change || "",
+          vepAnnotation: "missense_variant",
+          clinvarGermlineClassification: "Custom",
+          clinvarVariationID: "",
+          alleleFrequency: parseFloat(cv["Allele Frequency"]) || 0,
+          REVEL: parseFloat(cv.REVEL) || 0,
+          Mutation_type: cv.Mutation_type,
 
-            Functional: cv.Functional || "",
-            Pvalue_functional: cv.Pvalue_functional || "",
-            "Allele Count": cv["Allele Count"],
-            "Allele Number": cv["Allele Number"],
-            "Allele Frequency": cv["Allele Frequency"],
-            condition: cv.condition,
-            Genomic_ID: cv.Genomic_ID,
-            Protein_change: cv.Protein_change,
-            cDNA_change: cv.cDNA_change,
-            sourceType: "custom" as const,
-            conditions: cv.condition ? [cv.condition] : [],
-            VEST4_score: cv.VEST4_score,
-            MutPred_score: cv.MutPred_score,
-            BayesDel_addAF_score: cv.BayesDel_addAF_score,
-            ACMG: cv.ACMG,
-            Meta_height: cv.Meta_height,
-            Meta_height_SE: cv.Meta_height_SE,
-            Meta_ratio: cv.Meta_ratio,
-            Meta_ratio_SE: cv.Meta_ratio_SE,
-            proteinPosition: getProteinPosition(cv.Protein_change),
-            proteinDomain: getDomainInfo(getProteinPosition(cv.Protein_change))
-              .domain,
-            proteinSubdomain: getDomainInfo(
-              getProteinPosition(cv.Protein_change),
-            ).subdomain,
-            acmgClassification: getLabelForPoints(cv.ACMG),
-            clinvarClassification: clinvarLookupMap.get(cv.Genomic_ID)
-              ?.classification,
-            clinvarConditions: clinvarLookupMap.get(cv.Genomic_ID)?.conditions,
-            clinvarTranscript: clinvarLookupMap.get(cv.Genomic_ID)?.transcript,
-            clinvarVariant_ID: clinvarLookupMap.get(cv.Genomic_ID)?.variationID,
-            clinvarGenomicID: clinvarLookupMap.get(cv.Genomic_ID)?.genomicID,
-            myvariant_id: clinvarLookupMap.get(cv.Genomic_ID)?.id,
-          };
-        });
+          Functional: cv.Functional || "",
+          Pvalue_functional: cv.Pvalue_functional || "",
+          "Allele Count": cv["Allele Count"],
+          "Allele Number": cv["Allele Number"],
+          "Allele Frequency": cv["Allele Frequency"],
+          condition: cv.condition,
+          Genomic_ID: cv.Genomic_ID,
+          Protein_change: cv.Protein_change,
+          cDNA_change: cv.cDNA_change,
+          sourceType: "custom" as const,
+          conditions: cv.condition ? [cv.condition] : [],
+          VEST4_score: cv.VEST4_score,
+          MutPred_score: cv.MutPred_score,
+          BayesDel_addAF_score: cv.BayesDel_addAF_score,
+          ACMG: cv.ACMG,
+          proteinPosition: getProteinPosition(cv.Protein_change),
+          proteinDomain: getDomainInfo(getProteinPosition(cv.Protein_change))
+            .domain,
+          proteinSubdomain: getDomainInfo(getProteinPosition(cv.Protein_change))
+            .subdomain,
+          acmgClassification: getLabelForPoints(cv.ACMG),
+          clinvarClassification: clinvarLookupMap.get(cv.Genomic_ID)
+            ?.classification,
+          clinvarConditions: clinvarLookupMap.get(cv.Genomic_ID)?.conditions,
+          clinvarTranscript: clinvarLookupMap.get(cv.Genomic_ID)?.transcript,
+          clinvarVariant_ID: clinvarLookupMap.get(cv.Genomic_ID)?.variationID,
+          clinvarGenomicID: clinvarLookupMap.get(cv.Genomic_ID)?.genomicID,
+          myvariant_id: clinvarLookupMap.get(cv.Genomic_ID)?.id,
+        };
+      });
       console.log("Debug: Finished mapping custom variants.");
     }
 
@@ -539,12 +562,12 @@ export default function GeneDashboard() {
     }
 
     // 4. Mutation Types
-    if (filters.mutationTypes.length > 0) {
-      result = result.filter(
-        (v) =>
-          v.Mutation_type && filters.mutationTypes.includes(v.Mutation_type),
-      );
-    }
+    // if (filters.mutationTypes.length > 0) {
+    //   result = result.filter(
+    //     (v) =>
+    //       v.Mutation_type && filters.mutationTypes.includes(v.Mutation_type),
+    //   );
+    // }
 
     // 5. Protein Domains & Subdomains
     if (filters.proteinDomains.length > 0) {
@@ -589,6 +612,8 @@ export default function GeneDashboard() {
     return result;
   }, [
     clinvarVariants,
+    customVariants,
+    clinvarLookupMap,
     viewMode,
     symbol,
     filters,
@@ -875,10 +900,10 @@ export default function GeneDashboard() {
                     onChange={(e) =>
                       setSortOption(e.target.value as "cdna-asc" | "cdna-desc")
                     }
-                    className="text-[14px] py-2 text-gray-600 w-[130px] border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary-500 transition-colors font-medium"
+                    className="text-[14px] py-2 text-gray-600 w-[120px] border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary-500 transition-colors font-medium"
                   >
-                    <option value="cdna-asc">Sort by: cDNA (Asc)</option>
-                    <option value="cdna-desc">Sort by: cDNA (Desc)</option>
+                    <option value="cdna-asc">cDNA (Asc)</option>
+                    <option value="cdna-desc">cDNA (Desc)</option>
                   </select>
                 </div>
               </div>
@@ -901,83 +926,96 @@ export default function GeneDashboard() {
                 {mainView === "plots" && (
                   <div className="flex-1 flex flex-col min-h-0">
                     <div className="!p-0 !max-w-none shadow-sm relative overflow-hidden flex-1 w-full h-full min-h-[600px]">
-                      {/* View Toggle */}
-                      {viewMode === "custom" && (
-                        <div className="flex inline-flex m-4">
-                          <button
-                            onClick={() => setChartView("scatter")}
-                            className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
-                              chartView === "scatter"
-                                ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
-                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                            }`}
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 10V3L4 14h7v7l9-11h-7z"
-                              />
-                            </svg>
-                            Scatter Distribution
-                          </button>
-                          <button
-                            onClick={() => setChartView("bar")}
-                            className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
-                              chartView === "bar"
-                                ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
-                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                            }`}
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                              />
-                            </svg>
-                            Composition Bar
-                          </button>
+                      {isCustomLoading && viewMode === "custom" ? (
+                        <div className="flex-1 h-full flex items-center justify-center bg-gray-50/30 dark:bg-scientific-panel/10">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="w-10 h-10 border-4 border-primary-500/20 border-t-primary-500 rounded-full animate-spin"></div>
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                              Preparing data distributions...
+                            </p>
+                          </div>
                         </div>
-                      )}
-                      {chartView === "scatter" && viewMode === "custom" ? (
-                        <ScatterPlot
-                          data={classificationScatterData}
-                          xLabel="Protein Position (AA)"
-                          yLabel="ACMG Classification"
-                          title="Variant Classification Showcase"
-                          height="100%"
-                          yTickVals={[0, 1, 2, 3, 4]}
-                          yTickText={[
-                            "Benign",
-                            "Likely Benign",
-                            "Uncertain Significance",
-                            "Likely Pathogenic",
-                            "Pathogenic",
-                          ]}
-                          viewMode={viewMode}
-                        />
                       ) : (
-                        <div className="p-4 h-full">
-                          <ACMGDistribution
-                            variants={filteredAndSortedVariants}
-                            title="Classification Composition"
-                            height="100%"
-                            viewMode={viewMode}
-                          />
-                        </div>
+                        <>
+                          {/* View Toggle */}
+                          {viewMode === "custom" && (
+                            <div className="flex inline-flex m-4">
+                              <button
+                                onClick={() => setChartView("scatter")}
+                                className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                                  chartView === "scatter"
+                                    ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
+                                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                }`}
+                              >
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                                  />
+                                </svg>
+                                Scatter Distribution
+                              </button>
+                              <button
+                                onClick={() => setChartView("bar")}
+                                className={`flex mx-1 cursor-pointer items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                                  chartView === "bar"
+                                    ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800"
+                                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                }`}
+                              >
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                                  />
+                                </svg>
+                                Composition Bar
+                              </button>
+                            </div>
+                          )}
+                          {chartView === "scatter" && viewMode === "custom" ? (
+                            <ScatterPlot
+                              data={classificationScatterData}
+                              xLabel="Protein Position (AA)"
+                              yLabel="ACMG Classification"
+                              title="Variant Classification Showcase"
+                              height="100%"
+                              yTickVals={[0, 1, 2, 3, 4]}
+                              yTickText={[
+                                "Benign",
+                                "Likely Benign",
+                                "Uncertain Significance",
+                                "Likely Pathogenic",
+                                "Pathogenic",
+                              ]}
+                              viewMode={viewMode}
+                            />
+                          ) : (
+                            <div className="p-4 h-full">
+                              <ACMGDistribution
+                                variants={filteredAndSortedVariants}
+                                title="Classification Composition"
+                                height="100%"
+                                viewMode={viewMode}
+                              />
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -1040,7 +1078,7 @@ export default function GeneDashboard() {
                             columns={
                               viewMode === "clinvar"
                                 ? CLINVAR_COLUMNS
-                                : CUSTOM_COLUMNS
+                                : dynamicCustomColumns
                             }
                             visibleColumns={
                               viewMode === "clinvar"
@@ -1096,6 +1134,20 @@ export default function GeneDashboard() {
                         variants={paginatedVariants}
                         visibleColumns={visibleClinVarColumns}
                         gene={symbol}
+                      />
+                    ) : isCustomLoading ? (
+                      <div className="flex-1 min-h-[400px] flex items-center justify-center bg-gray-50/30 dark:bg-scientific-panel/10 border border-gray-200 dark:border-scientific-border rounded-b-lg">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-10 h-10 border-4 border-primary-500/20 border-t-primary-500 rounded-full animate-spin"></div>
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Fetching custom variants from database...
+                          </p>
+                        </div>
+                      </div>
+                    ) : customVariants.length === 0 ? (
+                      <CSVUpload
+                        gene={symbol}
+                        onUploadSuccess={fetchCustomData}
                       />
                     ) : (
                       <CustomVariantTable
