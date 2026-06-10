@@ -386,6 +386,8 @@ export default function GeneDashboard() {
     [customVariants],
   );
 
+  const customTableRef = useRef<any>(null);
+
   const filteredAndSortedVariants = useMemo(() => {
     // Initial dataset based on view mode
     let result: Variant[] = [];
@@ -709,7 +711,11 @@ export default function GeneDashboard() {
           }`}
         >
           <div className="h-full overflow-y-auto">
-            <FilterPanel filters={filters} setFilters={setFilters} />
+            <FilterPanel
+              filters={filters}
+              setFilters={setFilters}
+              gene={symbol}
+            />
           </div>
         </div>
 
@@ -991,7 +997,7 @@ export default function GeneDashboard() {
                           {chartView === "scatter" && viewMode === "custom" ? (
                             <ScatterPlot
                               data={classificationScatterData}
-                              xLabel="Protein Position (AA)"
+                              xLabel="Amino Acid Position (AA)"
                               yLabel="ACMG Classification"
                               title="Variant Classification Showcase"
                               height="100%"
@@ -1074,6 +1080,30 @@ export default function GeneDashboard() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
+                          {viewMode === "custom" &&
+                            customVariants.length > 0 && (
+                              <button
+                                onClick={() =>
+                                  customTableRef.current?.triggerUpdate()
+                                }
+                                className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-scientific-panel border border-primary-200 dark:border-primary-900/30 rounded-md text-xs font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all shadow-sm"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                                  />
+                                </svg>
+                                Update Table
+                              </button>
+                            )}
                           <ColumnSelector
                             columns={
                               viewMode === "clinvar"
@@ -1151,7 +1181,9 @@ export default function GeneDashboard() {
                       />
                     ) : (
                       <CustomVariantTable
+                        ref={customTableRef}
                         variants={paginatedVariants as any}
+                        allVariants={customVariants as any}
                         visibleColumns={visibleCustomColumns}
                         gene={symbol}
                       />

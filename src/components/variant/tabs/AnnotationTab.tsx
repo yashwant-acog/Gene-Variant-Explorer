@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Variant } from "@/lib/types";
 import dynamic from "next/dynamic";
+import ReferenceSection from "../ReferenceSection";
 
 // Dynamically import Plotly for client-side rendering in Next.js
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
@@ -37,7 +38,7 @@ export default function AnnotationTab({
     return { label: "Benign", color: "green" }; // Green
   };
 
-  // Helper to extract protein position from protein change (e.g., "M1K" -> 1)
+  // Helper to extract Amino Acid position from Amino Acid change (e.g., "M1K" -> 1)
   const extractProteinPosition = (proteinChange: string): number => {
     if (!proteinChange || proteinChange === "N/A") return NaN;
     const match = proteinChange.match(/[A-Z](\d+)/);
@@ -289,20 +290,26 @@ export default function AnnotationTab({
 
       {isCustom && plotPoints.length > 0 ? (
         <div className="bg-white dark:bg-scientific-panel rounded-lg border border-gray-200 dark:border-scientific-border shadow-sm overflow-hidden">
-          <div className="p-3 dark:bg-black/20 flex items-center justify-between">
+          <div className="p-3 dark:bg-black/20 flex items-center justify-between gap-3">
             <h3 className="font-semibold text-sm">
-              REVEL Score Distribution by Protein Change
+              REVEL Score Distribution by Amino Acid Change
             </h3>
-            <button
-              onClick={() => setShowMinimap(!showMinimap)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border ${
-                showMinimap
-                  ? "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 border-primary-300 dark:border-primary-700"
-                  : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border-gray-300 dark:border-gray-600"
-              }`}
-            >
-              {showMinimap ? "✓ Minimap On" : "○ Minimap Off"}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowMinimap(!showMinimap)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border ${
+                  showMinimap
+                    ? "bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 border-primary-300 dark:border-primary-700"
+                    : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border-gray-300 dark:border-gray-600"
+                }`}
+              >
+                {showMinimap ? "✓ Minimap On" : "○ Minimap Off"}
+              </button>
+              <ReferenceSection
+                title="Annotation & Predictive References"
+                references={variant?.["annotation reference"]}
+              />
+            </div>
           </div>
           <div className="bg-black h-[0.5px] mx-3"></div>
           <div className="p-3">
@@ -316,7 +323,7 @@ export default function AnnotationTab({
                   name: "main",
                   text: plotPoints.map(
                     (p: any) =>
-                      `${p.label}<br>Protein Position: ${p.x}<br>cDNA change: ${p.id}<br>REVEL: ${p.y.toFixed(3)}<br>Classification: ${p.classification}`,
+                      `${p.label}<br>Amino Acid Position: ${p.x}<br>cDNA change: ${p.id}<br>REVEL: ${p.y.toFixed(3)}<br>Classification: ${p.classification}`,
                   ),
                   hoverinfo: "text" as const,
                   marker: {
@@ -373,7 +380,7 @@ export default function AnnotationTab({
                 annotations: annotations,
                 xaxis: {
                   title: {
-                    text: "Protein Position",
+                    text: "Amino Acid Position",
                     font: { size: 12, color: "#9ca3af" },
                   },
                   range: [0, maxXValue],

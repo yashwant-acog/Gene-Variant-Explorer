@@ -75,6 +75,7 @@ export const getCustomColumns = (variants: any[]) => {
 
 interface CustomVariantTableProps {
   variants: CustomVariant[];
+  allVariants?: CustomVariant[]; // Full list for comparison logic
   visibleColumns?: string[];
   gene: string;
 }
@@ -253,11 +254,486 @@ const MostSubmissionsButton = ({ variationId }: { variationId: string }) => {
   );
 };
 
-export default function CustomVariantTable({
-  variants,
-  visibleColumns,
-  gene,
-}: CustomVariantTableProps) {
+// Robust parser that handles quoted values with newlines
+const parseCSV = (text: string) => {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = "";
+  let inQuotes = false;
+  let i = 0;
+
+  const firstLineLineEnding = text.search(/\r?\n/);
+  const firstLine =
+    firstLineLineEnding !== -1 ? text.substring(0, firstLineLineEnding) : text;
+  const delimiter = firstLine.includes("\t") ? "\t" : ",";
+
+  while (i < text.length) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (inQuotes) {
+      if (char === '"' && nextChar === '"') {
+        currentField += '"';
+        i += 2;
+        continue;
+      }
+      if (char === '"') {
+        inQuotes = false;
+        i++;
+        continue;
+      }
+      currentField += char;
+      i++;
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+        i++;
+      } else if (char === delimiter) {
+        currentRow.push(currentField.trim());
+        currentField = "";
+        i++;
+      } else if (char === "\n" || (char === "\r" && nextChar === "\n")) {
+        currentRow.push(currentField.trim());
+        if (currentRow.length > 1 || currentRow[0] !== "") {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentField = "";
+        i += char === "\r" ? 2 : 1;
+      } else {
+        currentField += char;
+        i++;
+      }
+    }
+  }
+
+  if (currentRow.length > 0 || currentField !== "") {
+    currentRow.push(currentField.trim());
+    rows.push(currentRow);
+  }
+
+  if (rows.length === 0) return [];
+  const finalHeaders = rows[0].map((h) => h.trim());
+  const data = [];
+  for (let i = 1; i < rows.length; i++) {
+    const values = rows[i];
+    if (values.length === 1 && values[0] === "") continue;
+    if (values.length !== finalHeaders.length) continue;
+
+    const row: any = {};
+    finalHeaders.forEach((header, index) => {
+      row[header] = values[index];
+    });
+
+    const variantId = row["ID"] || "";
+    if (!variantId) continue;
+
+    const variant: any = {
+      cdnaChange: row["c.change"] || null,
+      proteinChange: row["p.change"] || null,
+      id: variantId,
+      acmg: row["ACMG"] || null,
+      functional: row["Functional"] || null,
+      pvalueFunctional:
+        row["Pvalue_functional"] || row["Functional_Pvalue"] || null,
+      condition: row["condition"] || null,
+    };
+
+    Object.keys(row).forEach((col) => {
+      if (!variant[col]) variant[col] = row[col];
+    });
+
+    data.push(variant);
+  }
+  return data;
+};
+
+const DiffRow = ({ variant, diffs }: { variant: any; diffs: any[] }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden bg-white dark:bg-black/10">
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <svg
+            className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+          <span className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300">
+            {variant.id || variant.Genomic_ID}
+          </span>
+        </div>
+        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-500 px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-100 dark:border-amber-800/30">
+          {diffs.length} CHANGES
+        </span>
+      </div>
+
+      {isOpen && (
+        <div className="p-3 bg-gray-50 dark:bg-black/20 border-t border-gray-100 dark:border-gray-800 space-y-2">
+          {diffs.map((d, idx) => (
+            <div key={idx} className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-bold text-gray-400 uppercase">
+                {d.field.replace(/_/g, " ")}
+              </span>
+              <div className="flex items-center gap-2 text-[11px] font-mono">
+                <span className="text-red-500/80 line-through truncate max-w-[120px]">
+                  {d.old || "(empty)"}
+                </span>
+                <svg
+                  className="w-3 h-3 text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                  />
+                </svg>
+                <span className="text-green-600 dark:text-green-400 font-bold truncate max-w-[200px]">
+                  {d.new || "(empty)"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const UpdateConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  onCancelWithAdd,
+  newVariants,
+  changedRows = [],
+  isUploading,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  onCancelWithAdd?: () => void;
+  newVariants: any[];
+  changedRows: any[];
+  isUploading: boolean;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-scientific-panel rounded-2xl shadow-2xl border border-gray-200 dark:border-scientific-border w-full max-w-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-6 border-b border-gray-100 dark:border-scientific-border">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            Confirm Incremental Update
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            The following new variants were found in your CSV and will be added
+            to the dashboard.
+          </p>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[400px] space-y-6">
+          {newVariants.length > 0 && (
+            <div>
+              <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-lg border border-green-100 dark:border-green-800/30 mb-3">
+                <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                  {newVariants.length} New Variants Detected
+                </span>
+              </div>
+              <div className="space-y-2">
+                {newVariants.slice(0, 20).map((v, i) => (
+                  <div
+                    key={i}
+                    className="text-xs font-mono p-2 bg-gray-50 dark:bg-black/20 rounded border border-gray-100 dark:border-gray-800 flex justify-between"
+                  >
+                    <span>{v.id || v.Genomic_ID}</span>
+                    <span className="text-gray-400">
+                      {v.cdnaChange || v.cDNA_change}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {changedRows.length > 0 && (
+            <div>
+              <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-100 dark:border-amber-800/30 mb-3">
+                <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                  {changedRows.length} Modified Variants Detected
+                </span>
+                <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-0.5">
+                  Existing rows with updated values (e.g. conditions)
+                </p>
+              </div>
+              <div className="space-y-2">
+                {changedRows.slice(0, 20).map((row, i) => (
+                  <DiffRow key={i} variant={row.data} diffs={row.diffs} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {newVariants.length === 0 && changedRows.length === 0 && (
+            <div className="text-center py-8 text-gray-400 italic">
+              No changes detected in CSV.
+            </div>
+          )}
+        </div>
+
+        <div className="p-5 border-t border-gray-100 dark:border-scientific-border bg-gray-50 dark:bg-black/10 flex gap-3">
+          <button
+            onClick={onCancelWithAdd || onClose}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-xl transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={
+              isUploading ||
+              (newVariants.length === 0 && changedRows.length === 0)
+            }
+            className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-lg shadow-primary-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isUploading && (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            )}
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default React.forwardRef(function CustomVariantTable(
+  { variants, allVariants = [], visibleColumns, gene }: CustomVariantTableProps,
+  ref: React.Ref<any>,
+) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [pendingUpdates, setPendingUpdates] = useState<{
+    new: any[];
+    changed: any[];
+  }>({ new: [], changed: [] });
+  const [isUploading, setIsUploading] = useState(false);
+  const [fullCSVData, setFullCSVData] = useState<any[]>([]);
+
+  // Expose the trigger via ref
+  React.useImperativeHandle(ref, () => ({
+    triggerUpdate: handleUpdateFlow,
+  }));
+
+  const handleUpdateFlow = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".csv";
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          const csvData = parseCSV(text);
+          setFullCSVData(csvData);
+
+          // Use allVariants for filtering to ensure we check against the entire DB state
+          const compareList = allVariants.length > 0 ? allVariants : variants;
+
+          const nRows: any[] = [];
+          const cRows: any[] = [];
+
+          csvData.forEach((csvV) => {
+            const csvId = (csvV.Genomic_ID || csvV.id || "").toString().trim();
+            const existing = compareList.find((v: any) => {
+              const exId = (v.genomic_id || v.Genomic_ID || v.id || "")
+                .toString()
+                .trim();
+              return exId.toLowerCase() === csvId.toLowerCase();
+            });
+
+            if (!existing) {
+              nRows.push(csvV);
+            } else {
+              const diffs: any[] = [];
+              const getMappedVal = (obj: any, k: string) => {
+                const targetK = k.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+                // Final fallback: case-insensitive alphanumeric search through all object keys
+                const objKeys = Object.keys(obj);
+                const match = objKeys.find(
+                  (ok) =>
+                    ok.toLowerCase().replace(/[^a-z0-9]/g, "") === targetK,
+                );
+                if (match) return obj[match];
+
+                return "";
+              };
+
+              Object.keys(csvV).forEach((key) => {
+                const lowerK = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+                // Whitelist check
+                const isPhenotype = lowerK.startsWith("phenotype");
+                const isWhitelisted =
+                  [
+                    "pchange",
+                    "cchange",
+                    "id",
+                    "genomicid",
+                    "condition",
+                    "allelecount",
+                    "allelenumber",
+                    "allelefrequency",
+                    "allelecountafricanafricanamerican",
+                    "allelenumberafricanafricanamerican",
+                    "allelecountadmixedamerican",
+                    "allelenumberadmixedamerican",
+                    "allelecountashkenazijewish",
+                    "allelenumberashkenazijewish",
+                    "allelecounteastasian",
+                    "allelenumbereastasian",
+                    "allelecounteuropeanfinnish",
+                    "allelenumbereuropeanfinnish",
+                    "allelecountmiddleeastern",
+                    "allelenumbermiddleeastern",
+                    "allelecounteuropeannonfinnish",
+                    "allelenumbereuropeannonfinnish",
+                    "allelecountamish",
+                    "allelenumberamish",
+                    "allelecountsouthasian",
+                    "allelenumbersouthasian",
+                    "revel",
+                    "vest4score",
+                    "mutpredscore",
+                    "bayesdeladdafscore",
+                    "acmg",
+                    "functional",
+                    "pvaluefunctional",
+                    "clinicalreference",
+                    "associationreference",
+                    "functionalreference",
+                    "annotationreference",
+                  ].includes(lowerK) || isPhenotype;
+
+                if (!isWhitelisted) return;
+
+                // Also skip primary keys from being modified
+                if (
+                  lowerK === "id" ||
+                  lowerK === "genomicid" ||
+                  lowerK === "cdnachange" ||
+                  lowerK === "cchange" ||
+                  lowerK === "proteinchange" ||
+                  lowerK === "pchange"
+                )
+                  return;
+
+                const csvVal = (csvV[key] || "").toString().trim();
+                const existingVal = (getMappedVal(existing, key) || "")
+                  .toString()
+                  .trim();
+
+                const isNA = (val: string) =>
+                  !val ||
+                  val === "NA" ||
+                  val === "N/A" ||
+                  val === "nan" ||
+                  val === "null";
+                if (isNA(csvVal) && isNA(existingVal)) return;
+
+                // Numeric comparison fallback
+                if (
+                  !isNaN(Number(csvVal)) &&
+                  !isNaN(Number(existingVal)) &&
+                  csvVal !== "" &&
+                  existingVal !== ""
+                ) {
+                  if (Math.abs(Number(csvVal) - Number(existingVal)) < 1e-10)
+                    return;
+                }
+
+                if (csvVal !== existingVal) {
+                  diffs.push({
+                    field: key,
+                    old: isNA(existingVal) ? null : existingVal,
+                    new: csvVal,
+                  });
+                }
+              });
+
+              if (diffs.length > 0) {
+                cRows.push({ data: csvV, diffs });
+              }
+            }
+          });
+
+          if (nRows.length === 0 && cRows.length === 0) {
+            alert(
+              "No changes found in the uploaded CSV compared to the existing database.",
+            );
+            return;
+          }
+
+          setPendingUpdates({ new: nRows, changed: cRows });
+          setIsModalOpen(true);
+        } catch (err: any) {
+          alert("Error parsing CSV: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  const processUpload = async () => {
+    if (
+      pendingUpdates.new.length === 0 &&
+      pendingUpdates.changed.length === 0
+    ) {
+      setIsModalOpen(false);
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const response = await fetch(`/api/variants/${gene}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variants: fullCSVData }), // Send full data, backend UPSERT handles it
+      });
+
+      if (response.ok) {
+        setIsModalOpen(false);
+        window.location.reload();
+      } else {
+        const d = await response.json();
+        alert("Upload failed: " + (d.error || "Unknown error"));
+      }
+    } catch (e) {
+      alert("Error uploading data.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   if (!variants || variants.length === 0) {
     return (
       <div className="w-full h-48 flex items-center justify-center bg-gray-50 dark:bg-scientific-panel/30 border border-gray-200 dark:border-scientific-border rounded-lg text-gray-500 italic">
@@ -707,6 +1183,16 @@ export default function CustomVariantTable({
           </tbody>
         </table>
       </div>
+
+      <UpdateConfirmModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCancelWithAdd={processUpload}
+        onConfirm={processUpload}
+        newVariants={pendingUpdates.new}
+        changedRows={pendingUpdates.changed}
+        isUploading={isUploading}
+      />
     </div>
   );
-}
+});

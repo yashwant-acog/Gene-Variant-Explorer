@@ -21,11 +21,18 @@ export interface FilterState {
 interface FilterPanelProps {
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
+  gene: string;
 }
 
-export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
+export default function FilterPanel({
+  filters,
+  setFilters,
+  gene,
+}: FilterPanelProps) {
   // Internal state for pending filters
   const [pendingFilters, setPendingFilters] = useState<FilterState>(filters);
+
+  const isFGFR3 = gene?.toUpperCase() === "FGFR3";
 
   // Sync pendingFilters with filters when filters change from outside (e.g. Reset All)
   useEffect(() => {
@@ -212,53 +219,61 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
           </div>
         </AccordionSection>
 
-        <div className="my-2 border-t border-gray-100 dark:border-gray-800" />
+        {isFGFR3 && (
+          <>
+            <div className="my-2 border-t border-gray-100 dark:border-gray-800" />
+            {/* Protein Domains */}
+            <AccordionSection title="Protein Domain" defaultOpen={true}>
+              <div className="space-y-2 max-h-[300px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
+                {ProteinDomains.map((domain) => (
+                  <label
+                    key={domain}
+                    className="flex items-center gap-3 cursor-pointer group"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={pendingFilters.proteinDomains.includes(domain)}
+                      onChange={() => handleDomainChange(domain)}
+                      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
+                      {domain}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </AccordionSection>
+          </>
+        )}
 
-        {/* Protein Domains */}
-        <AccordionSection title="Protein Domain" defaultOpen={true}>
-          <div className="space-y-2 max-h-[300px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
-            {ProteinDomains.map((domain) => (
-              <label
-                key={domain}
-                className="flex items-center gap-3 cursor-pointer group"
-              >
-                <input
-                  type="checkbox"
-                  checked={pendingFilters.proteinDomains.includes(domain)}
-                  onChange={() => handleDomainChange(domain)}
-                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
-                  {domain}
-                </span>
-              </label>
-            ))}
-          </div>
-        </AccordionSection>
-
-        <div className="my-2 border-t border-gray-100 dark:border-gray-800" />
-
-        {/* Protein Subdomains */}
-        <AccordionSection title="Protein Subdomain" defaultOpen={true}>
-          <div className="space-y-2 max-h-[300px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
-            {ProteinSubdomains.map((subdomain) => (
-              <label
-                key={subdomain}
-                className="flex items-center gap-3 cursor-pointer group"
-              >
-                <input
-                  type="checkbox"
-                  checked={pendingFilters.proteinSubdomains.includes(subdomain)}
-                  onChange={() => handleSubdomainChange(subdomain)}
-                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
-                  {subdomain === "None" ? "Other" : subdomain}
-                </span>
-              </label>
-            ))}
-          </div>
-        </AccordionSection>
+        {isFGFR3 && (
+          <>
+            <div className="my-2 border-t border-gray-100 dark:border-gray-800" />
+            {/* Protein Subdomains */}
+            <AccordionSection title="Protein Subdomain" defaultOpen={true}>
+              <div className="space-y-2 max-h-[300px] mb-2 overflow-y-auto pr-2 scrollbar-thin">
+                {ProteinSubdomains.map((subdomain) => (
+                  <label
+                    key={subdomain}
+                    className="flex items-center gap-3 cursor-pointer group"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={pendingFilters.proteinSubdomains.includes(
+                        subdomain,
+                      )}
+                      onChange={() => handleSubdomainChange(subdomain)}
+                      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 cursor-pointer"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors break-words w-full">
+                      {subdomain === "None" ? "Other" : subdomain}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </AccordionSection>
+          </>
+        )}
       </div>
 
       <>

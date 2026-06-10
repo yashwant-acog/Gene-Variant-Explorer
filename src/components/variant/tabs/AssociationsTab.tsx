@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import ForestPlot, { ForestPlotData } from "@/components/charts/ForestPlot";
 import { Variant } from "@/lib/types";
+import ReferenceSection from "../ReferenceSection";
 
 interface AssociationsTabProps {
   variant: Variant;
@@ -65,7 +66,7 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="bg-white dark:bg-scientific-panel p-6 rounded-xl border border-gray-100 dark:border-scientific-border shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div className="flex items-center justify-between gap-6 mb-8">
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
               <svg
@@ -78,7 +79,7 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M19 11l-7 7-7-7"
+                  d="m19 11-7 7-7-7"
                 />
               </svg>
               Phenotype Associations
@@ -87,6 +88,10 @@ export default function AssociationsTab({ variant }: AssociationsTabProps) {
               Forest plots showing associations for user-defined phenotypes.
             </p>
           </div>
+          <ReferenceSection
+            title="Association References"
+            references={variant?.["association reference"]}
+          />
         </div>
 
         {hasData ? (

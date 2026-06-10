@@ -22,27 +22,71 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
   };
 
   const parseCSV = (text: string) => {
-    const lines = text.split(/\r?\n/);
-    if (lines.length === 0) return [];
+    // Robust parser that handles quoted values with newlines
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let currentField = "";
+    let inQuotes = false;
+    let i = 0;
 
-    const headers = lines[0].split("\t").map((h) => h.trim());
+    // Detect delimiter
+    const firstLineLineEnding = text.search(/\r?\n/);
+    const firstLine =
+      firstLineLineEnding !== -1
+        ? text.substring(0, firstLineLineEnding)
+        : text;
+    const delimiter = firstLine.includes("\t") ? "\t" : ",";
 
-    // Fallback if not tab-separated
-    const finalHeaders =
-      headers.length > 1 ? headers : lines[0].split(",").map((h) => h.trim());
-    const delimiter = headers.length > 1 ? "\t" : ",";
+    while (i < text.length) {
+      const char = text[i];
+      const nextChar = text[i + 1];
 
+      if (inQuotes) {
+        if (char === '"' && nextChar === '"') {
+          currentField += '"';
+          i += 2;
+          continue;
+        }
+        if (char === '"') {
+          inQuotes = false;
+          i++;
+          continue;
+        }
+        currentField += char;
+        i++;
+      } else {
+        if (char === '"') {
+          inQuotes = true;
+          i++;
+        } else if (char === delimiter) {
+          currentRow.push(currentField.trim());
+          currentField = "";
+          i++;
+        } else if (char === "\n" || (char === "\r" && nextChar === "\n")) {
+          currentRow.push(currentField.trim());
+          if (currentRow.length > 1 || currentRow[0] !== "") {
+            rows.push(currentRow);
+          }
+          currentRow = [];
+          currentField = "";
+          i += char === "\r" ? 2 : 1;
+        } else {
+          currentField += char;
+          i++;
+        }
+      }
+    }
+
+    // Push the final row if there's data left
+    if (currentRow.length > 0 || currentField !== "") {
+      currentRow.push(currentField.trim());
+      rows.push(currentRow);
+    }
+
+    if (rows.length === 0) return [];
+
+    const finalHeaders = rows[0].map((h) => h.trim());
     const requiredColumns = ["c.change", "p.change", "ID"];
-    const optionalColumns = [
-      "ACMG",
-      "Functional",
-      "Functional_Pvalue",
-      "Meta_height",
-      "Meta_height_SE",
-      "Meta_ratio",
-      "Meta_ratio_SE",
-      "condition",
-    ];
 
     const missingRequired = requiredColumns.filter(
       (col) => !finalHeaders.includes(col),
@@ -54,16 +98,16 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
     }
 
     const data = [];
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
+    for (let i = 1; i < rows.length; i++) {
+      const values = rows[i];
 
-      const values = lines[i].split(delimiter).map((v) => v.trim());
+      // Skip empty or mismatching rows
+      if (values.length === 1 && values[0] === "") continue;
 
-      // Skip rows that don't match header length to avoid misalignment
       if (values.length !== finalHeaders.length) {
         console.warn(
           `Row ${i} skipped: Column count mismatch. Expected ${finalHeaders.length}, got ${values.length}`,
+          values,
         );
         continue;
       }
@@ -74,22 +118,11 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
       });
 
       const variantId = row["ID"] || "";
-
-      // Safety check for Postgres B-tree index limits (ID is the primary key)
-      if (variantId.length > 1000) {
-        console.warn(
-          `Row ${i} skipped: ID too long (${variantId.length} chars).`,
-        );
+      if (variantId.length > 1000 || !variantId) {
+        console.warn(`Row ${i} skipped: ID issue.`, variantId);
         continue;
       }
 
-      if (!variantId) {
-        console.warn(`Row ${i} skipped: Missing ID.`);
-        continue;
-      }
-
-      // Map with fallback for optional fields
-      // Use the exact names from CSV that the user specified
       const variant: any = {
         cdnaChange: row["c.change"] || null,
         proteinChange: row["p.change"] || null,
@@ -101,14 +134,9 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
         condition: row["condition"] || null,
       };
 
-      // Dynamically add ALL columns present in the CSV to ensure Phenotype_ and other tags are preserved
+      // Add all keys to ensure references and Phenotype_ columns are included
       Object.keys(row).forEach((col) => {
-        if (
-          row[col] !== undefined &&
-          row[col] !== "" &&
-          row[col] !== null &&
-          !variant[col]
-        ) {
+        if (!variant[col]) {
           variant[col] = row[col];
         }
       });
