@@ -265,3 +265,26 @@ export async function POST(
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ gene: string }> },
+) {
+  const { gene } = await params;
+  const tableName = gene.toLowerCase();
+
+  try {
+    if (!/^[a-z0-9_]+$/.test(tableName)) {
+      return NextResponse.json({ error: "Invalid gene name" }, { status: 400 });
+    }
+
+    await pool.query(`DROP TABLE IF EXISTS ${tableName}`);
+
+    return NextResponse.json({
+      message: `Successfully deleted table for ${gene}`,
+    });
+  } catch (error: any) {
+    console.error(`Error deleting table for ${gene}:`, error);
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+  }
+}
