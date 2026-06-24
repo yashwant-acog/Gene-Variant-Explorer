@@ -86,58 +86,82 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
     if (rows.length === 0) return [];
 
     const finalHeaders = rows[0].map((h) => h.trim());
-    const requiredColumns = ["c.change", "p.change", "ID"];
+    const mandatoryColumns = ["c.change", "p.change", "ID"];
 
-    const missingRequired = requiredColumns.filter(
+    // Whitelist based on user request (Allele columns re-added for data ingestion)
+    const allowedStatic = [
+      "condition",
+      "Allele Count",
+      "Allele Number",
+      "Allele Frequency",
+      "Allele Count African/African American",
+      "Allele Number African/African American",
+      "Allele Count Admixed American",
+      "Allele Number Admixed American",
+      "Allele Count Ashkenazi Jewish",
+      "Allele Number Ashkenazi Jewish",
+      "Allele Count East Asian",
+      "Allele Number East Asian",
+      "Allele Count European (Finnish)",
+      "Allele Number European (Finnish)",
+      "Allele Count Middle Eastern",
+      "Allele Number Middle Eastern",
+      "Allele Count European (non-Finnish)",
+      "Allele Number European (non-Finnish)",
+      "Allele Count Amish",
+      "Allele Number Amish",
+      "Allele Count South Asian",
+      "Allele Number South Asian",
+      "REVEL",
+      "VEST4_score",
+      "MutPred_score",
+      "BayesDel_addAF_score",
+      "ACMG",
+      "Functional",
+      "Pvalue_functional",
+      "clinical reference",
+      "association reference",
+      "functional reference",
+      "annotation reference",
+    ];
+
+    const missingRequired = mandatoryColumns.filter(
       (col) => !finalHeaders.includes(col),
     );
     if (missingRequired.length > 0) {
       throw new Error(
-        `Missing required columns: ${missingRequired.join(", ")}`,
+        `Missing required mandatory columns: ${missingRequired.join(", ")}`,
       );
     }
 
     const data = [];
     for (let i = 1; i < rows.length; i++) {
       const values = rows[i];
-
-      // Skip empty or mismatching rows
       if (values.length === 1 && values[0] === "") continue;
 
-      if (values.length !== finalHeaders.length) {
-        console.warn(
-          `Row ${i} skipped: Column count mismatch. Expected ${finalHeaders.length}, got ${values.length}`,
-          values,
-        );
-        continue;
-      }
+      if (values.length !== finalHeaders.length) continue;
 
-      const row: any = {};
+      const fullRow: any = {};
       finalHeaders.forEach((header, index) => {
-        row[header] = values[index];
+        fullRow[header] = values[index];
       });
 
-      const variantId = row["ID"] || "";
-      if (variantId.length > 1000 || !variantId) {
-        console.warn(`Row ${i} skipped: ID issue.`, variantId);
-        continue;
-      }
+      const variantId = (fullRow["ID"] || "").toString().trim();
+      if (!variantId || variantId.length > 2000) continue;
 
+      // Build the final variant object using ONLY whitelisted columns
       const variant: any = {
-        cdnaChange: row["c.change"] || null,
-        proteinChange: row["p.change"] || null,
+        cdnaChange: fullRow["c.change"] || null,
+        proteinChange: fullRow["p.change"] || null,
         id: variantId,
-        acmg: row["ACMG"] || null,
-        functional: row["Functional"] || null,
-        pvalueFunctional:
-          row["Pvalue_functional"] || row["Functional_Pvalue"] || null,
-        condition: row["condition"] || null,
       };
 
-      // Add all keys to ensure references and Phenotype_ columns are included
-      Object.keys(row).forEach((col) => {
-        if (!variant[col]) {
-          variant[col] = row[col];
+      // Add other allowed columns if present in CSV
+      finalHeaders.forEach((header) => {
+        if (allowedStatic.includes(header) || header.startsWith("Phenotype_")) {
+          if (fullRow[header] !== undefined) {
+            variant[header] = fullRow[header];
+          }
         }
       });
 
@@ -163,19 +187,31 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
         try {
           const text = e.target?.result as string;
           const variants = parseCSV(text);
+          console.log(
+            `Starting batched upload of ${variants.length} variants...`,
+          );
 
-          const response = await fetch(`/api/variants/${gene}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ variants }),
-          });
+          // Batching to prevent "Payload Too Large" errors
+          const BATCH_SIZE = 100;
+          for (let i = 0; i < variants.length; i += BATCH_SIZE) {
+            const chunk = variants.slice(i, i + BATCH_SIZE);
+            console.log(`Uploading batch ${Math.floor(i / BATCH_SIZE) + 1}...`);
 
-          if (response.ok) {
-            onUploadSuccess();
-          } else {
-            const data = await response.json();
-            setError(data.error || "Failed to upload variants.");
+            const response = await fetch(`/api/variants/${gene}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ variants: chunk }),
+            });
+
+            if (!response.ok) {
+              const data = await response.json();
+              throw new Error(
+                data.error || `Failed to upload batch ${i / BATCH_SIZE}`,
+              );
+            }
           }
+
+          onUploadSuccess();
         } catch (err: any) {
           setError(err.message || "Error parsing CSV.");
         } finally {

@@ -147,13 +147,19 @@ export async function POST(
 
     await pool.query(createTableSql);
 
+    // Fetch the actual column list from the DB to filter out non-existent columns in the payload
+    const colFetch = await pool.query(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = $1",
+      [tableName]
+    );
+    const dbColumnNames = new Set(colFetch.rows.map(r => r.column_name));
+
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
       for (const v of variants) {
         // Field matching for INSERTS
-        // This maps the JSON property names (which might vary) to the DB columns
         const mapping: Record<string, string> = {
           genomic_id: "genomic_id",
           protein_change: "protein_change",
@@ -184,28 +190,42 @@ export async function POST(
           Genomic_ID: "genomic_id",
         };
 
-        const columns = ["genomic_id"];
-        const values = [v.id || v.genomic_id || v.Genomic_ID];
-        const placeholders = ["$1"];
+        const columns: string[] = [];
+        const values: any[] = [];
 
-        // Apply mapping for standard fields
+        // 1. Handle Genomic ID (Primary Key)
+        const gid = v.id || v.genomic_id || v.Genomic_ID || v.genomicId;
+        if (!gid) continue; 
+        
+        columns.push("genomic_id");
+        values.push(gid);
+
+        // 2. Map standard fields
         Object.entries(mapping).forEach(([jsonKey, dbCol]) => {
-           if (v[jsonKey] !== undefined && v[jsonKey] !== null && !columns.includes(dbCol)) {
+           if (v[jsonKey] !== undefined && v[jsonKey] !== null && dbCol !== "genomic_id" && dbColumnNames.has(dbCol) && !columns.includes(dbCol)) {
               columns.push(dbCol);
               values.push(v[jsonKey]);
-              placeholders.push(`$${values.length}`);
            }
         });
 
-        // Add everything else from the variant object (populations, phenotypes, etc)
+        // 3. Add dynamic fields (phenotypes, populations)
         Object.keys(v).forEach(key => {
-           if (!mapping[key] && !["id"].includes(key) && !columns.includes(`"${key}"`)) {
+           // Skip if already handled or internal
+           if (mapping[key] || ["id", "genomicId"].includes(key)) return;
+           
+           // Check if it exists in DB (strip quotes for the set lookup)
+           if (dbColumnNames.has(key) && !columns.includes(`"${key}"`)) {
               columns.push(`"${key}"`);
               values.push(v[key]);
-              placeholders.push(`$${values.length}`);
            }
         });
 
+        if (columns.length <= 1) {
+           // Only genomic_id found, nothing to update or insert really worth doing
+           continue;
+        }
+
+        const placeholders = columns.map((_, i) => `$${i + 1}`);
         const updateSet = columns
           .filter((c) => c !== "genomic_id")
           .map((c) => `${c} = EXCLUDED.${c}`)
@@ -232,8 +252,16 @@ export async function POST(
     return NextResponse.json({
       message: `Successfully loaded ${variants.length} variants into ${tableName}`,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error uploading variants for ${gene}:`, error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    
+    // Specifically handle the "index row size" error for better user feedback
+    if (error.message?.includes("index row size") || error.code === "22021" || error.code === "54000") {
+       return NextResponse.json({ 
+         error: "One or more variants have an ID that is too large to index (Max ~2700 characters). Please check your CSV for long sequence strings in the ID column." 
+       }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

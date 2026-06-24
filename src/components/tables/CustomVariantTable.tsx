@@ -37,9 +37,14 @@ const BASE_CUSTOM_COLUMNS = [
   },
   { key: "clinvar", label: "ClinVar", group: "Public Sources" },
   { key: "gnomad", label: "gnomAD", group: "Public Sources" },
-  { key: "Allele Count", label: "Allele Count", group: "Population" },
-  { key: "Allele Number", label: "Allele Num", group: "Population" },
-  { key: "Allele Frequency", label: "Allele Freq", group: "Population" },
+  { key: "clinical reference", label: "Clinical Ref", group: "References" },
+  {
+    key: "association reference",
+    label: "Association Ref",
+    group: "References",
+  },
+  { key: "functional reference", label: "Functional Ref", group: "References" },
+  { key: "annotation reference", label: "Annotation Ref", group: "References" },
 ];
 
 export const getCustomColumns = (variants: any[]) => {
@@ -49,7 +54,12 @@ export const getCustomColumns = (variants: any[]) => {
   const phenotypeKeys = new Set<string>();
   variants.forEach((v) => {
     Object.keys(v).forEach((k) => {
-      if (k.startsWith("Phenotype_")) {
+      if (
+        k.startsWith("Phenotype_") &&
+        v[k] !== null &&
+        v[k] !== undefined &&
+        v[k] !== ""
+      ) {
         phenotypeKeys.add(k);
       }
     });
@@ -70,7 +80,22 @@ export const getCustomColumns = (variants: any[]) => {
       });
     });
 
-  return columns;
+  // Filter out any columns from BASE_CUSTOM_COLUMNS that have NO data in the current variants set
+  // EXCEPT for core columns like Identity and Public Sources (ClinVar/gnomAD)
+  return columns.filter((col) => {
+    if (col.group === "Identity" || col.group === "Public Sources") return true;
+
+    return variants.some((v) => {
+      const val = v[col.key];
+      return (
+        val !== null &&
+        val !== undefined &&
+        val !== "" &&
+        val !== "NA" &&
+        val !== "N/A"
+      );
+    });
+  });
 };
 
 interface CustomVariantTableProps {
@@ -314,33 +339,79 @@ const parseCSV = (text: string) => {
 
   if (rows.length === 0) return [];
   const finalHeaders = rows[0].map((h) => h.trim());
+
+  // Whitelist based on user request (Allele columns re-added for data ingestion)
+  const allowedStatic = [
+    "condition",
+    "Allele Count",
+    "Allele Number",
+    "Allele Frequency",
+    "Allele Count African/African American",
+    "Allele Number African/African American",
+    "Allele Count Admixed American",
+    "Allele Number Admixed American",
+    "Allele Count Ashkenazi Jewish",
+    "Allele Number Ashkenazi Jewish",
+    "Allele Count East Asian",
+    "Allele Number East Asian",
+    "Allele Count European (Finnish)",
+    "Allele Number European (Finnish)",
+    "Allele Count Middle Eastern",
+    "Allele Number Middle Eastern",
+    "Allele Count European (non-Finnish)",
+    "Allele Number European (non-Finnish)",
+    "Allele Count Amish",
+    "Allele Number Amish",
+    "Allele Count South Asian",
+    "Allele Number South Asian",
+    "REVEL",
+    "VEST4_score",
+    "MutPred_score",
+    "BayesDel_addAF_score",
+    "ACMG",
+    "Functional",
+    "Pvalue_functional",
+    "clinical reference",
+    "association reference",
+    "functional reference",
+    "annotation reference",
+  ];
+
   const data = [];
   for (let i = 1; i < rows.length; i++) {
     const values = rows[i];
     if (values.length === 1 && values[0] === "") continue;
     if (values.length !== finalHeaders.length) continue;
 
-    const row: any = {};
+    const fullRow: any = {};
     finalHeaders.forEach((header, index) => {
-      row[header] = values[index];
+      fullRow[header] = values[index];
     });
 
-    const variantId = row["ID"] || "";
-    if (!variantId) continue;
+    const variantId = (fullRow["ID"] || "").toString().trim();
+    // PostgreSQL B-tree index limit is ~2700 bytes. Skip rows with massive IDs to prevent "index row size exceeds maximum" errors.
+    if (!variantId || variantId.length > 2000) {
+      if (variantId.length > 2000) {
+        console.warn(
+          `Skipping row with excessively large ID (${variantId.length} chars).`,
+        );
+      }
+      continue;
+    }
 
     const variant: any = {
-      cdnaChange: row["c.change"] || null,
-      proteinChange: row["p.change"] || null,
+      cdnaChange: fullRow["c.change"] || null,
+      proteinChange: fullRow["p.change"] || null,
       id: variantId,
-      acmg: row["ACMG"] || null,
-      functional: row["Functional"] || null,
-      pvalueFunctional:
-        row["Pvalue_functional"] || row["Functional_Pvalue"] || null,
-      condition: row["condition"] || null,
     };
 
-    Object.keys(row).forEach((col) => {
-      if (!variant[col]) variant[col] = row[col];
+    // Add other allowed columns if present in CSV
+    finalHeaders.forEach((header) => {
+      if (allowedStatic.includes(header) || header.startsWith("Phenotype_")) {
+        if (fullRow[header] !== undefined) {
+          variant[header] = fullRow[header];
+        }
+      }
     });
 
     data.push(variant);
@@ -593,6 +664,10 @@ export default React.forwardRef(function CustomVariantTable(
 
                 // Whitelist check
                 const isPhenotype = lowerK.startsWith("phenotype");
+                const isPopulation =
+                  lowerK.includes("homozygote") ||
+                  lowerK.includes("hemizygote");
+
                 const isWhitelisted =
                   [
                     "pchange",
@@ -633,6 +708,12 @@ export default React.forwardRef(function CustomVariantTable(
                     "functionalreference",
                     "annotationreference",
                   ].includes(lowerK) || isPhenotype;
+
+                // Explicitly ignore homozygote and hemizygote columns as requested
+                const isIgnored =
+                  lowerK.includes("homozygote") ||
+                  lowerK.includes("hemizygote");
+                if (isIgnored) return;
 
                 if (!isWhitelisted) return;
 
@@ -714,21 +795,34 @@ export default React.forwardRef(function CustomVariantTable(
     }
     setIsUploading(true);
     try {
-      const response = await fetch(`/api/variants/${gene}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ variants: fullCSVData }), // Send full data, backend UPSERT handles it
-      });
+      console.log(
+        `Starting batched update of ${fullCSVData.length} variants...`,
+      );
 
-      if (response.ok) {
-        setIsModalOpen(false);
-        window.location.reload();
-      } else {
-        const d = await response.json();
-        alert("Upload failed: " + (d.error || "Unknown error"));
+      // Batching to prevent "Payload Too Large" errors (Next.js limit is typically 1MB)
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < fullCSVData.length; i += BATCH_SIZE) {
+        const chunk = fullCSVData.slice(i, i + BATCH_SIZE);
+        console.log(`Uploading batch ${Math.floor(i / BATCH_SIZE) + 1}...`);
+
+        const response = await fetch(`/api/variants/${gene}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ variants: chunk }),
+        });
+
+        if (!response.ok) {
+          const d = await response.json();
+          throw new Error(
+            d.error || `Failed to upload batch ${i / BATCH_SIZE}`,
+          );
+        }
       }
-    } catch (e) {
-      alert("Error uploading data.");
+
+      setIsModalOpen(false);
+      window.location.reload();
+    } catch (e: any) {
+      alert("Error uploading data: " + e.message);
     } finally {
       setIsUploading(false);
     }
@@ -900,7 +994,13 @@ export default React.forwardRef(function CustomVariantTable(
                     col.key === "acmgClassification" ||
                     col.key === "clinvarClassification"
                   ) {
-                    const classification = (v as any)[col.key] || "";
+                    const acmgScore = v.ACMG || v.acmg;
+                    const classification =
+                      col.key === "acmgClassification"
+                        ? acmgScore && acmgScore !== "NA" && acmgScore !== "N/A"
+                          ? (v as any)[col.key] || ""
+                          : ""
+                        : (v as any)[col.key] || "";
 
                     const parts = classification.split(" || ");
                     const finalParts =
@@ -1067,16 +1167,17 @@ export default React.forwardRef(function CustomVariantTable(
                   // Phenotype / Meta analysis columns
                   if (col.key.startsWith("Phenotype_")) {
                     renderedValue =
-                      value && value !== "NA" ? (
+                      value &&
+                      value !== "NA" &&
+                      value !== "N/A" &&
+                      value !== "nan" ? (
                         <span className="font-mono text-xs">
                           {typeof value === "string" &&
                           !isNaN(parseFloat(value))
                             ? parseFloat(value).toFixed(4)
                             : value}
                         </span>
-                      ) : (
-                        "NA"
-                      );
+                      ) : null;
                   }
 
                   if (col.key === "condition") {
@@ -1167,6 +1268,20 @@ export default React.forwardRef(function CustomVariantTable(
                         </Link>
                       );
                     }
+                  }
+
+                  // Global fallback for missing values
+                  if (
+                    renderedValue === null ||
+                    renderedValue === undefined ||
+                    renderedValue === "" ||
+                    renderedValue === "NA" ||
+                    renderedValue === "N/A" ||
+                    renderedValue === "nan"
+                  ) {
+                    renderedValue = (
+                      <span className="text-gray-400 font-sans">-</span>
+                    );
                   }
 
                   return (
