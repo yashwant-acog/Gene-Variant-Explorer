@@ -41,7 +41,6 @@ export default function FunctionalTab({
     return parseFloat(str);
   };
 
-  // Prepare data from dummyCustomVariants
   const plotPoints = allGeneVariants
     .map((v: any) => {
       const func = parseNum(v.Functional || v.functional);

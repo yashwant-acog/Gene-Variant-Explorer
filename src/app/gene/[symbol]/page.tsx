@@ -702,7 +702,7 @@ export default function GeneDashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f172a]">
       {/* Navbar */}
-      <Navbar />
+      <Navbar geneSymbol={symbol as string} />
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar (Filters) - Fixed position with internal scroll */}
@@ -770,16 +770,6 @@ export default function GeneDashboard() {
                     </svg>
                   )}
                 </button>
-                <div className="flex flex-col">
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
-                    <span className="text-primary-600 dark:text-scientific-accent">
-                      {symbol?.toUpperCase()}
-                    </span>
-                    <span className="text-gray-400 font-medium text-sm hidden sm:inline">
-                      Variants
-                    </span>
-                  </h1>
-                </div>
               </div>
               {/* Middle Section - View Mode & Table/Plots Toggle */}
               <div className="flex items-center gap-4 order-3 md:order-2 w-full md:w-auto mt-3 md:mt-0 md:flex-none">

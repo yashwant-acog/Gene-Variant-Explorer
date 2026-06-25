@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-export default function Navbar() {
+export default function Navbar({ geneSymbol }: { geneSymbol?: string }) {
   const [darkMode, setDarkMode] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -26,7 +26,7 @@ export default function Navbar() {
 
   return (
     <header className="flex-none sticky top-0 z-50 w-full border-b border-gray-200 dark:border-scientific-border bg-white/80 dark:bg-scientific-panel/80 backdrop-blur">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-4 h-8 rounded-md bg-gradient-to-br from-primary-500 to-blue-600 flex items-center justify-center shadow-lg">
@@ -40,6 +40,18 @@ export default function Navbar() {
             </span>
           </Link>
         </div>
+
+        {/* Center Gene Symbol */}
+        {geneSymbol && (
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center text-xl font-bold">
+            <span className="text-primary-600 dark:text-scientific-accent">
+              {geneSymbol}
+            </span>
+            <span className="text-gray-400 ml-2 mt-1 font-medium text-sm hidden sm:inline">
+              Variants
+            </span>
+          </div>
+        )}
 
         <nav className="flex items-center gap-6">
           <Link

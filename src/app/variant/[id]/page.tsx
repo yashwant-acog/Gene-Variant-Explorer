@@ -4,7 +4,6 @@ import React, { use, useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import TabLayout from "@/components/layout/TabLayout";
-import { dummyVariants } from "@/lib/dummyData";
 import { Variant } from "@/lib/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
@@ -454,6 +453,7 @@ export default function VariantPage({ params }: Props) {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-scientific-bg">
+      <Navbar geneSymbol={geneFromParam || undefined} />
       {/* Rich Header Section - Sticky */}
       <div className="bg-white dark:bg-scientific-panel border-b border-gray-200 dark:border-scientific-border pt-6 pb-0 shadow-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 max-w-7xl">

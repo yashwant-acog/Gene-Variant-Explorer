@@ -10,11 +10,11 @@ The application is currently optimized for the **FGFR3** gene, integrating both 
 
 Gene Variant Explorer enables users to:
 
-* Search for a gene (currently FGFR3 fully supported)
-* View all variants associated with that gene
-* Explore variant-level details across multiple biological and clinical dimensions
-* Compare public ClinVar data with internally curated custom data
-* Visualize variant-related metrics using interactive charts
+- Search for a gene (currently FGFR3 fully supported)
+- View all variants associated with that gene
+- Explore variant-level details across multiple biological and clinical dimensions
+- Compare public ClinVar data with internally curated custom data
+- Visualize variant-related metrics using interactive charts
 
 The system is modular and scalable, allowing future expansion to additional genes and datasets.
 
@@ -24,27 +24,27 @@ The system is modular and scalable, allowing future expansion to additional gene
 
 ### Framework
 
-* **Next.js (App Router)**
-* Server and Client Components architecture
-* Dynamic routing for gene and variant-level pages
+- **Next.js (App Router)**
+- Server and Client Components architecture
+- Dynamic routing for gene and variant-level pages
 
 ### Language
 
-* **TypeScript**
+- **TypeScript**
 
 ### Styling
 
-* **Tailwind CSS**
+- **Tailwind CSS**
 
 ### Data Visualization
 
-* Plotly (via react-plotly.js)
-* Custom reusable chart components
+- Plotly (via react-plotly.js)
+- Custom reusable chart components
 
 ### Data Sources
 
-* ClinVar API (public variant data)
-* Custom uploaded datasets (currently FGFR3 only)
+- ClinVar API (public variant data)
+- Custom uploaded datasets (currently FGFR3 only)
 
 ---
 
@@ -79,24 +79,24 @@ The system is modular and scalable, allowing future expansion to additional gene
 
 Contains route-level components using Next.js App Router.
 
-* `page.tsx` – Landing page (gene search)
-* `gene/[symbol]/` – Gene dashboard
-* `variant/[id]/` – Variant-level detail page
-* `layout.tsx` – Global layout configuration
+- `page.tsx` – Landing page (gene search)
+- `gene/[symbol]/` – Gene dashboard
+- `variant/[id]/` – Variant-level detail page
+- `layout.tsx` – Global layout configuration
 
 #### `components/`
 
 Reusable UI components organized by domain:
 
-* `charts/` – Plot components (population plots, lollipop plots, etc.)
-* `filters/` – Table and dashboard filtering components
-* `layout/` – Navigation and structural layout components
-* `tables/` – ClinVar and Custom variant tables
-* `variant/tabs/` – Variant-level tab components
+- `charts/` – Plot components (population plots, lollipop plots, etc.)
+- `filters/` – Table and dashboard filtering components
+- `layout/` – Navigation and structural layout components
+- `tables/` – ClinVar and Custom variant tables
+- `variant/tabs/` – Variant-level tab components
 
 #### `lib/`
 
-Utility functions, static data, dummy data, and shared logic.
+Utility functions, static data, and shared logic.
 
 ---
 
@@ -106,9 +106,9 @@ Utility functions, static data, dummy data, and shared logic.
 
 Users can enter a gene symbol.
 
-* Currently, **FGFR3** is fully supported.
-* ClinVar data can be fetched for any gene symbol supported by the ClinVar API.
-* Custom data is available only for FGFR3.
+- Currently, **FGFR3** is fully supported.
+- ClinVar data can be fetched for any gene symbol supported by the ClinVar API.
+- Custom data is available only for FGFR3.
 
 ---
 
@@ -118,21 +118,19 @@ Route: `/gene/[symbol]`
 
 Displays:
 
-* All variants for the selected gene
-* Two data tables:
+- All variants for the selected gene
+- Two data tables:
+  - **ClinVar Variants**
+    - Fetched dynamically from the ClinVar API
 
-  * **ClinVar Variants**
-
-    * Fetched dynamically from the ClinVar API
-  * **Custom Variants**
-
-    * Uploaded and stored locally (FGFR3 only)
+  - **Custom Variants**
+    - Uploaded and stored locally (FGFR3 only)
 
 Additional features:
 
-* Plot section summarizing gene-level metrics
-* Filtering and sorting capabilities
-* Clickable rows for variant-level exploration
+- Plot section summarizing gene-level metrics
+- Filtering and sorting capabilities
+- Clickable rows for variant-level exploration
 
 ---
 
@@ -174,28 +172,27 @@ Each tab is modular and implemented as an independent component, allowing future
 
 ### ClinVar Data
 
-* Fetched dynamically via ClinVar API
-* Used for public germline classification and condition mapping
+- Fetched dynamically via ClinVar API
+- Used for public germline classification and condition mapping
 
 ### Custom Data
 
-* Uploaded internally
-* Currently available only for FGFR3
-* Includes:
-
-  * Functional assay results
-  * REVEL scores
-  * Association metrics
-  * Population statistics
+- Uploaded internally
+- Currently available only for FGFR3
+- Includes:
+  - Functional assay results
+  - REVEL scores
+  - Association metrics
+  - Population statistics
 
 ### Matching Strategy
 
 Variants are matched across datasets using:
 
-* Genomic coordinates
-* cDNA change
-* Protein change
-* Normalized identifiers where required
+- Genomic coordinates
+- cDNA change
+- Protein change
+- Normalized identifiers where required
 
 ---
 
@@ -203,18 +200,18 @@ Variants are matched across datasets using:
 
 Although FGFR3 is the primary supported gene:
 
-* The routing structure supports any gene symbol
-* ClinVar integration works generically
-* Custom data architecture is extensible for additional genes
-* Modular component structure enables easy expansion
+- The routing structure supports any gene symbol
+- ClinVar integration works generically
+- Custom data architecture is extensible for additional genes
+- Modular component structure enables easy expansion
 
 Future enhancements may include:
 
-* Multi-gene custom dataset support
-* Additional annotation sources
-* Structural visualization
-* Biobank integrations
-* Advanced filtering and cross-gene comparisons
+- Multi-gene custom dataset support
+- Additional annotation sources
+- Structural visualization
+- Biobank integrations
+- Advanced filtering and cross-gene comparisons
 
 ---
 
@@ -239,14 +236,15 @@ npm run build
 ```
 
 ---
+
 ## Running with Docker
 
 This project includes a `Dockerfile` and `docker-compose.yml` for containerized deployment.
 
 ### Prerequisites
 
-* Docker installed
-* Docker Compose installed (or Docker with Compose plugin)
+- Docker installed
+- Docker Compose installed (or Docker with Compose plugin)
 
 ### Build the Application
 
@@ -262,9 +260,9 @@ docker compose up -d
 
 This will:
 
-* Build the Docker image
-* Start the application in detached mode
-* Expose the configured port (as defined in `docker-compose.yml`)
+- Build the Docker image
+- Start the application in detached mode
+- Expose the configured port (as defined in `docker-compose.yml`)
 
 ### Stop the Application
 
@@ -276,36 +274,35 @@ After starting the container, open your browser and navigate to the configured h
 
 ---
 
-
 ## Design Philosophy
 
-* Modular architecture
-* Strict TypeScript typing
-* Clean separation of:
+- Modular architecture
+- Strict TypeScript typing
+- Clean separation of:
+  - Data logic
+  - UI components
+  - Visualization components
 
-  * Data logic
-  * UI components
-  * Visualization components
-* Scalable folder structure
-* Research-focused UI/UX design
+- Scalable folder structure
+- Research-focused UI/UX design
 
 ---
 
 ## Current Limitations
 
-* Custom dataset available only for FGFR3
-* Some features depend on availability of external API data
-* Population visualization depends on available frequency data
+- Custom dataset available only for FGFR3
+- Some features depend on availability of external API data
+- Population visualization depends on available frequency data
 
 ---
 
 ## Future Roadmap
 
-* Add support for additional genes
-* Improve population distribution visualizations
-* Add structural protein views
-* Integrate literature APIs
-* Expand functional evidence datasets
+- Add support for additional genes
+- Improve population distribution visualizations
+- Add structural protein views
+- Integrate literature APIs
+- Expand functional evidence datasets
 
 ---
 
