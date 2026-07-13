@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Variant } from "@/lib/types";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import DisclaimerEditor from "../DisclaimerEditor";
 
 interface OverviewTabProps {
   variant: Variant;
@@ -137,6 +138,7 @@ export default function OverviewTab({
 
   return (
     <div className="space-y-4">
+      <DisclaimerEditor gene={variant.gene} tab="overview" />
       {/* Compact info cards with horizontal layout */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">

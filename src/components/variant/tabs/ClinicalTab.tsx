@@ -1,7 +1,7 @@
 import React from "react";
 import { Variant } from "@/lib/types";
 import Link from "next/link";
-import ReferenceSection from "../ReferenceSection";
+import DisclaimerEditor from "../DisclaimerEditor";
 
 interface ClinicalTabProps {
   variant: Variant;
@@ -16,6 +16,7 @@ export default function ClinicalTab({
 }: ClinicalTabProps) {
   return (
     <div className="space-y-6">
+      <DisclaimerEditor gene={variant.gene} tab="clinical" />
       <div className="bg-white dark:bg-scientific-panel p-6 rounded-xl border border-gray-200 dark:border-scientific-border shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -34,10 +35,6 @@ export default function ClinicalTab({
             </svg>
             Associated Conditions
           </h3>
-          <ReferenceSection
-            title="Clinical References"
-            references={variant?.["clinical reference"]}
-          />
         </div>
 
         {/* Loading State */}

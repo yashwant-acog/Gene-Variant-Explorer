@@ -3,6 +3,7 @@ import PopulationBarChart from "@/components/charts/PopulationBarChart";
 import PopulationDistributionChart from "@/components/charts/PopulationDistributionChart";
 import { Variant } from "@/lib/types";
 import { useSearchParams } from "next/navigation";
+import DisclaimerEditor from "../DisclaimerEditor";
 
 interface PopulationTabProps {
   variant: Variant;
@@ -278,6 +279,7 @@ export default function PopulationTab({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
+      <DisclaimerEditor gene={variant.gene} tab="population" />
       <div className="bg-white dark:bg-scientific-panel p-4 rounded-lg border border-gray-100 dark:border-scientific-border shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">

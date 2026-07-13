@@ -34,6 +34,7 @@ export async function GET(
         Protein_change: row.protein_change,
         cDNA_change: row.cdna_change,
         Genomic_ID: row.genomic_id,
+        transcript: row.transcript,
         condition: row.condition,
         Mutation_type: row.mutation_type,
         REVEL: row.revel || row.REVEL,
@@ -106,6 +107,7 @@ export async function POST(
       "genomic_id TEXT PRIMARY KEY",
       "protein_change TEXT",
       "cdna_change TEXT",
+      "transcript TEXT",
       "condition TEXT",
       "mutation_type TEXT",
       "revel TEXT",
@@ -132,7 +134,7 @@ export async function POST(
     allPayloadKeys.forEach(key => {
       const kLow = key.toLowerCase();
       // Skip fields already handled or standard internal fields
-      if (key.startsWith("Phenotype_") || (!["id", "proteinchange", "cdnachange", "condition", "revel", "acmg", "functional", "pvaluefunctional"].includes(kLow) && !coreColumns.some(c => c.includes(`"${key}"`)))) {
+      if (key.startsWith("Phenotype_") || (!["id", "proteinchange", "cdnachange", "transcript", "condition", "revel", "acmg", "functional", "pvaluefunctional"].includes(kLow) && !coreColumns.some(c => c.includes(`"${key}"`)))) {
          dynamicColsSql.push(`"${key}" TEXT`);
       }
     });
@@ -154,6 +156,18 @@ export async function POST(
     );
     const dbColumnNames = new Set(colFetch.rows.map(r => r.column_name));
 
+    // For any core column that is missing (e.g. transcript from a past update), add it explicitly
+    for (const coreCol of coreColumns) {
+      const colNameMatch = coreCol.match(/^"?([a-zA-Z0-9_ ]+)"?\s+TEXT/i);
+      if (colNameMatch && colNameMatch[1]) {
+        const colName = colNameMatch[1].toLowerCase();
+        if (!dbColumnNames.has(colName)) {
+           await pool.query(`ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS "${colNameMatch[1]}" TEXT`);
+           dbColumnNames.add(colName);
+        }
+      }
+    }
+
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -168,6 +182,7 @@ export async function POST(
           cdna_change: "cdna_change",
           cdnaChange: "cdna_change",
           "c.change": "cdna_change",
+          transcript: "transcript",
           condition: "condition",
           mutation_type: "mutation_type",
           revel: "revel",

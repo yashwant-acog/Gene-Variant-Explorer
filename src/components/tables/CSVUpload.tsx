@@ -86,7 +86,7 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
     if (rows.length === 0) return [];
 
     const finalHeaders = rows[0].map((h) => h.trim());
-    const mandatoryColumns = ["c.change", "p.change", "ID"];
+    const mandatoryColumns = ["c.change", "p.change", "ID", "transcript"];
 
     // Whitelist based on user request (Allele columns re-added for data ingestion)
     const allowedStatic = [
@@ -119,15 +119,17 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
       "ACMG",
       "Functional",
       "Pvalue_functional",
-      "clinical reference",
-      "association reference",
-      "functional reference",
-      "annotation reference",
     ];
 
-    const missingRequired = mandatoryColumns.filter(
-      (col) => !finalHeaders.includes(col),
-    );
+    const missingRequired = mandatoryColumns.filter((col) => {
+      if (col === "transcript") {
+        return (
+          !finalHeaders.includes("transcript") &&
+          !finalHeaders.includes("Transcript")
+        );
+      }
+      return !finalHeaders.includes(col);
+    });
     if (missingRequired.length > 0) {
       throw new Error(
         `Missing required mandatory columns: ${missingRequired.join(", ")}`,
@@ -154,6 +156,7 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
         cdnaChange: fullRow["c.change"] || null,
         proteinChange: fullRow["p.change"] || null,
         id: variantId,
+        transcript: fullRow["transcript"] || fullRow["Transcript"] || null,
       };
 
       // Add other allowed columns if present in CSV

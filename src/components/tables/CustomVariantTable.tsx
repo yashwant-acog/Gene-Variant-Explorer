@@ -371,10 +371,6 @@ const parseCSV = (text: string) => {
     "ACMG",
     "Functional",
     "Pvalue_functional",
-    "clinical reference",
-    "association reference",
-    "functional reference",
-    "annotation reference",
   ];
 
   const data = [];
@@ -403,6 +399,7 @@ const parseCSV = (text: string) => {
       cdnaChange: fullRow["c.change"] || null,
       proteinChange: fullRow["p.change"] || null,
       id: variantId,
+      transcript: fullRow["transcript"] || fullRow["Transcript"] || null,
     };
 
     // Add other allowed columns if present in CSV
@@ -696,6 +693,7 @@ export default React.forwardRef(function CustomVariantTable(
                     "allelenumberamish",
                     "allelecountsouthasian",
                     "allelenumbersouthasian",
+                    "transcript",
                     "revel",
                     "vest4score",
                     "mutpredscore",
@@ -703,10 +701,6 @@ export default React.forwardRef(function CustomVariantTable(
                     "acmg",
                     "functional",
                     "pvaluefunctional",
-                    "clinicalreference",
-                    "associationreference",
-                    "functionalreference",
-                    "annotationreference",
                   ].includes(lowerK) || isPhenotype;
 
                 // Explicitly ignore homozygote and hemizygote columns as requested
@@ -970,23 +964,74 @@ export default React.forwardRef(function CustomVariantTable(
                       if (cdnaMatch) cdna = cdnaMatch[1];
                     }
 
-                    if (!nmId || nmId === "N/A") {
+                    const customTranscriptParams = v.transcript;
+                    const customTranscript =
+                      customTranscriptParams &&
+                      customTranscriptParams !== "N/A" &&
+                      customTranscriptParams !== "NA" &&
+                      customTranscriptParams !== "nan"
+                        ? customTranscriptParams
+                        : null;
+
+                    if ((!nmId || nmId === "N/A") && !customTranscript) {
                       renderedValue = (
                         <span className="text-gray-400 font-sans">-</span>
                       );
                     } else {
-                      const searchParam = encodeURIComponent(`${nmId}:${cdna}`);
-                      const href = `https://www.ncbi.nlm.nih.gov/nuccore/${nmId}?report=graph&search=${searchParam}`;
+                      const renderClinvarLink = () => {
+                        if (!nmId || nmId === "N/A") return null;
+                        const searchParam = encodeURIComponent(
+                          `${nmId}:${cdna}`,
+                        );
+                        const href = `https://www.ncbi.nlm.nih.gov/nuccore/${nmId}?report=graph&search=${searchParam}`;
+                        return (
+                          <Link
+                            href={href}
+                            target="_blank"
+                            className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs whitespace-nowrap"
+                          >
+                            {nmId}
+                          </Link>
+                        );
+                      };
 
-                      renderedValue = (
-                        <Link
-                          href={href}
-                          target="_blank"
-                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs whitespace-nowrap"
-                        >
-                          {nmId}
-                        </Link>
-                      );
+                      const renderCustomTranscript = () => {
+                        if (!customTranscript) return null;
+                        return (
+                          <span className="font-medium text-xs whitespace-nowrap text-gray-700 dark:text-gray-300">
+                            {customTranscript}
+                          </span>
+                        );
+                      };
+
+                      if (
+                        nmId === customTranscript ||
+                        (nmId && nmId !== "N/A" && !customTranscript)
+                      ) {
+                        renderedValue = renderClinvarLink();
+                      } else if (
+                        (!nmId || nmId === "N/A") &&
+                        customTranscript
+                      ) {
+                        renderedValue = renderCustomTranscript();
+                      } else {
+                        renderedValue = (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] uppercase text-gray-400 tracking-wider font-semibold">
+                                ClinVar
+                              </span>
+                              {renderClinvarLink()}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] uppercase text-gray-400 tracking-wider font-semibold">
+                                Custom
+                              </span>
+                              {renderCustomTranscript()}
+                            </div>
+                          </div>
+                        );
+                      }
                     }
                   }
 

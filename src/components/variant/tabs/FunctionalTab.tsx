@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Plot from "react-plotly.js";
 import { Variant } from "@/lib/types";
-import ReferenceSection from "../ReferenceSection";
+import DisclaimerEditor from "../DisclaimerEditor";
 
 interface FunctionalTabProps {
   variant: Variant;
@@ -333,6 +333,7 @@ export default function FunctionalTab({
 
   return (
     <div className="space-y-6">
+      <DisclaimerEditor gene={variant.gene} tab="functional" />
       {isCustom && plotPoints.length > 0 ? (
         <>
           <div className="bg-white dark:bg-gray-800/70 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
@@ -350,10 +351,6 @@ export default function FunctionalTab({
               >
                 {showMinimap ? "✓ Minimap On" : "○ Minimap Off"}
               </button>
-              <ReferenceSection
-                title="Functional Analysis References"
-                references={variant?.["functional reference"]}
-              />
             </div>
             <div className="bg-black h-[0.5px] my-2 mt-4"></div>
 

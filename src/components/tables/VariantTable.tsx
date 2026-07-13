@@ -349,39 +349,34 @@ export default function VariantTable({
   };
 
   return (
-    <div className="flex-1 w-full border border-gray-200 dark:border-scientific-border rounded-lg shadow-sm  flex flex-col">
-      <div className="flex-1 max-h-[520px] overflow-y-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-scientific-border">
-          <thead className="sticky top-0 z-20 bg-gray-50 dark:bg-scientific-panel/90 backdrop-blur shadow-sm">
-            <tr>
+    <div className="border border-gray-200 dark:border-scientific-border rounded-b-lg shadow-sm">
+      {/* SCROLL CONTAINER */}
+      <div className="max-h-[520px] overflow-y-auto">
+        <table className="w-full text-left border-collapse">
+          <thead className="sticky top-0 z-30">
+            {/* Column Headers */}
+            <tr className="bg-gray-100 dark:bg-scientific-header border-b border-gray-200 dark:border-scientific-border text-xs font-semibold text-gray-700 dark:text-gray-200">
               {columns.map((col) => {
-                let className =
-                  "px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider";
-                if (col.key === "Protein_change") className += " w-40";
-                if (col.key === "genomicID")
-                  className +=
-                    "left-0 bg-gray-50 dark:bg-scientific-panel/90 z-10 backdrop-blur w-36";
-                if (col.key === "af" || col.key === "scores")
-                  className = className.replace("text-left", "text-right");
-                if (col.key === "action")
-                  className = className.replace("text-left", "text-center");
-
                 return (
-                  <th key={col.key} scope="col" className={className}>
+                  <th
+                    key={col.key}
+                    className="px-4 py-3 border-r border-gray-200 dark:border-scientific-border last:border-r-0 whitespace-nowrap sticky top-0 bg-gray-100 dark:bg-scientific-header z-30"
+                  >
                     {col.label}
                   </th>
                 );
               })}
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-transparent divide-y divide-gray-200 dark:divide-scientific-border">
+          <tbody className="divide-y divide-gray-200 dark:divide-scientific-border bg-white dark:bg-transparent">
             {variants.map((variant) => (
               <tr
                 key={variant.id}
-                className="hover:bg-gray-50/50 dark:hover:bg-scientific-panel/40 transition-colors group"
+                className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
               >
                 {columns.map((col) => {
-                  const cellClassName = "px-4 py-3 text-sm";
+                  const cellClassName =
+                    "px-4 py-2 border-r border-gray-200 dark:border-scientific-border last:border-r-0 text-sm font-mono text-gray-600 dark:text-gray-300";
 
                   if (col.key === "Variation") {
                     const cdnaList =
@@ -444,18 +439,29 @@ export default function VariantTable({
                     const cdnaMatch = title.match(/:(c\.[^ (]+)/);
                     const cdna = cdnaMatch ? cdnaMatch[1] : "";
 
-                    if (!nmId)
+                    const customTranscriptParams = (variant as any)
+                      .customTranscript;
+                    const customTranscript =
+                      customTranscriptParams &&
+                      customTranscriptParams !== "N/A" &&
+                      customTranscriptParams !== "NA" &&
+                      customTranscriptParams !== "nan"
+                        ? customTranscriptParams
+                        : null;
+
+                    if (!nmId && !customTranscript) {
                       return (
                         <td key={col.key} className={cellClassName}>
                           -
                         </td>
                       );
+                    }
 
-                    const searchParam = encodeURIComponent(`${nmId}:${cdna}`);
-                    const href = `https://www.ncbi.nlm.nih.gov/nuccore/${nmId}?report=graph&search=${searchParam}`;
-
-                    return (
-                      <td key={col.key} className={cellClassName}>
+                    const renderClinvarLink = () => {
+                      if (!nmId) return null;
+                      const searchParam = encodeURIComponent(`${nmId}:${cdna}`);
+                      const href = `https://www.ncbi.nlm.nih.gov/nuccore/${nmId}?report=graph&search=${searchParam}`;
+                      return (
                         <Link
                           href={href}
                           target="_blank"
@@ -463,6 +469,41 @@ export default function VariantTable({
                         >
                           {nmId}
                         </Link>
+                      );
+                    };
+
+                    const renderCustomTranscript = () => {
+                      if (!customTranscript) return null;
+                      return (
+                        <span className="font-medium text-xs whitespace-nowrap text-gray-700 dark:text-gray-300">
+                          {customTranscript}
+                        </span>
+                      );
+                    };
+
+                    return (
+                      <td key={col.key} className={cellClassName}>
+                        {nmId === customTranscript ||
+                        (nmId && !customTranscript) ? (
+                          renderClinvarLink()
+                        ) : !nmId && customTranscript ? (
+                          renderCustomTranscript()
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] uppercase text-gray-400 tracking-wider font-semibold">
+                                ClinVar
+                              </span>
+                              {renderClinvarLink()}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] uppercase text-gray-400 tracking-wider font-semibold">
+                                Custom
+                              </span>
+                              {renderCustomTranscript()}
+                            </div>
+                          </div>
+                        )}
                       </td>
                     );
                   }

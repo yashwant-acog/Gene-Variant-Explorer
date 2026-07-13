@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Variant } from "@/lib/types";
 import dynamic from "next/dynamic";
-import ReferenceSection from "../ReferenceSection";
+import DisclaimerEditor from "../DisclaimerEditor";
 
 // Dynamically import Plotly for client-side rendering in Next.js
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
@@ -244,6 +244,7 @@ export default function AnnotationTab({
 
   return (
     <div className="space-y-4">
+      <DisclaimerEditor gene={variant.gene} tab="annotation" />
       {/* Compact score cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -305,10 +306,6 @@ export default function AnnotationTab({
               >
                 {showMinimap ? "✓ Minimap On" : "○ Minimap Off"}
               </button>
-              <ReferenceSection
-                title="Annotation & Predictive References"
-                references={variant?.["annotation reference"]}
-              />
             </div>
           </div>
           <div className="bg-black h-[0.5px] mx-3"></div>

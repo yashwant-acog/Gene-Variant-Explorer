@@ -408,7 +408,7 @@ export default function GeneDashboard() {
           rsIDs: [],
           reference: genomicParts[2] || "N/A",
           alternate: genomicParts[3] || "N/A",
-          transcript: "N/A",
+          transcript: cv.transcript || "N/A",
           hgvsConsequence: cv.cDNA_change || "",
           proteinConsequence: cv.Protein_change || "",
           vepAnnotation: "missense_variant",
@@ -468,6 +468,7 @@ export default function GeneDashboard() {
           customCondition: customMatch?.condition,
           customGenomicID: customMatch?.genomicID,
           customProteinChange: customMatch?.proteinChange,
+          customTranscript: customMatch?.transcript,
         };
       });
     }
