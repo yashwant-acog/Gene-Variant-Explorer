@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Variant } from "@/lib/types";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import DisclaimerEditor from "../DisclaimerEditor";
 
 // Dynamically import Plotly for client-side rendering in Next.js
@@ -17,6 +18,89 @@ export default function AnnotationTab({
   isCustom = true,
   allGeneVariants,
 }: AnnotationTabProps) {
+  const searchParams = useSearchParams();
+  const rawGenomicId =
+    searchParams.get("genomicId") ||
+    variant.Genomic_ID ||
+    variant.genomicID ||
+    "";
+  const [dbnsfpScores, setDbnsfpScores] = useState<any>(null);
+  const [dbnsfpLoading, setDbnsfpLoading] = useState(false);
+
+  const parsedChr = useMemo(() => {
+    if (rawGenomicId) {
+      const cleanId = decodeURIComponent(rawGenomicId).trim();
+      const ncMatch = cleanId.match(/NC_(\d+)\.\d+:g\./i);
+      if (ncMatch) {
+        return String(parseInt(ncMatch[1], 10));
+      }
+      const delims = /[:\-]/;
+      const parts = cleanId.split(delims);
+      if (parts.length > 0) {
+        return parts[0].trim().toLowerCase().replace(/^chr/, "");
+      }
+    }
+    if (variant.chromosome && variant.chromosome !== "N/A") {
+      return variant.chromosome.toLowerCase().replace(/^chr/, "");
+    }
+    return "";
+  }, [rawGenomicId, variant.chromosome]);
+
+  const [dbnsfpPlotVariants, setDbnsfpPlotVariants] = useState<any[]>([]);
+  const [dbnsfpPlotLoading, setDbnsfpPlotLoading] = useState(false);
+
+  useEffect(() => {
+    async function getDbnsfp() {
+      if (!rawGenomicId) return;
+      setDbnsfpLoading(true);
+      try {
+        const response = await fetch(
+          `/api/annotation/dbnsfp?genomicId=${encodeURIComponent(rawGenomicId)}`,
+        );
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.scores) {
+            setDbnsfpScores(data.scores);
+          } else {
+            setDbnsfpScores(null);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching dbNSFP row:", err);
+      } finally {
+        setDbnsfpLoading(false);
+      }
+    }
+    getDbnsfp();
+  }, [rawGenomicId]);
+
+  useEffect(() => {
+    async function fetchPlotData() {
+      const gene = variant.gene;
+      if (!gene || !parsedChr) return;
+      setDbnsfpPlotLoading(true);
+      try {
+        const res = await fetch(
+          `/api/annotation/dbnsfp/gene?gene=${encodeURIComponent(gene)}&chr=${encodeURIComponent(parsedChr)}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.variants) {
+            setDbnsfpPlotVariants(data.variants);
+          } else {
+            setDbnsfpPlotVariants([]);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching plot data:", err);
+        setDbnsfpPlotVariants([]);
+      } finally {
+        setDbnsfpPlotLoading(false);
+      }
+    }
+    fetchPlotData();
+  }, [variant.gene, parsedChr]);
+
   // Helper to parse numeric values
   const parseNum = (val: string | number | undefined) => {
     if (val === undefined || val === null) return NaN;
@@ -48,35 +132,65 @@ export default function AnnotationTab({
     return NaN;
   };
 
-  // Prepare distribution data from all custom variants for this gene
+  // Prepare distribution data from database table
   const { plotPoints, currentIndex, maxXValue } = useMemo(() => {
-    const points = allGeneVariants
+    const points = dbnsfpPlotVariants
       .map((v: any) => {
-        const protein = v.Protein_change || v.protein_change || "N/A";
+        const protein = v.protein || "N/A";
         const position = extractProteinPosition(protein);
-        const revelScore = parseNum(v.REVEL || v.revel);
+        const revelScore = parseNum(v.revel);
         const classification = getRevelClassification(revelScore);
         return {
           x: position,
           y: revelScore,
-          label:
-            v.Protein_change ||
-            v.protein_change ||
-            v.cDNA_change ||
-            v.cdna_change,
-          id: v.cDNA_change || v.cdna_change,
+          label: v.protein && v.protein !== "N/A" ? v.protein : v.cdna || "N/A",
+          id: v.cdna || "",
           protein: protein,
           classification: classification.label,
           color: classification.color,
+          pos: v.pos,
+          ref: v.ref,
+          alt: v.alt,
         };
       })
       .filter((p: any) => !isNaN(p.y) && !isNaN(p.x));
 
-    const currentVariantIndex = points.findIndex(
-      (p: any) =>
+    let currentPos: number | null = null;
+    let currentRef = "";
+    let currentAlt = "";
+
+    if (rawGenomicId) {
+      const cleanId = decodeURIComponent(rawGenomicId).trim();
+      const ncMatch = cleanId.match(/NC_(\d+)\.\d+:g\.(\d+)([A-Z]+)>([A-Z]+)/i);
+      if (ncMatch) {
+        currentPos = parseInt(ncMatch[2], 10);
+        currentRef = ncMatch[3].toUpperCase();
+        currentAlt = ncMatch[4].toUpperCase();
+      } else {
+        const delims = /[:\-]/;
+        const parts = cleanId.split(delims);
+        if (parts.length === 4) {
+          currentPos = parseInt(parts[1].trim(), 10);
+          currentRef = parts[2].trim().toUpperCase();
+          currentAlt = parts[3].trim().toUpperCase();
+        }
+      }
+    }
+
+    const currentVariantIndex = points.findIndex((p: any) => {
+      if (
+        currentPos !== null &&
+        p.pos === currentPos &&
+        p.ref === currentRef &&
+        p.alt === currentAlt
+      ) {
+        return true;
+      }
+      return (
         p.id === (variant.cDNA_change || variant.id) ||
-        p.protein === variant.Protein_change,
-    );
+        p.protein === variant.Protein_change
+      );
+    });
 
     const maxPosition =
       points.length > 0 ? Math.max(...points.map((p: any) => p.x)) : 100;
@@ -87,7 +201,7 @@ export default function AnnotationTab({
       currentIndex: currentVariantIndex,
       maxXValue: maxX,
     };
-  }, [variant, allGeneVariants]);
+  }, [variant, dbnsfpPlotVariants, rawGenomicId]);
 
   // State for minimap visibility
   const [showMinimap, setShowMinimap] = useState(true);
@@ -252,9 +366,15 @@ export default function AnnotationTab({
             VEST4 Score
           </h3>
           <p className="text-xs font-mono font-bold text-gray-900 dark:text-gray-100 uppercase">
-            {variant.VEST4_score
-              ? parseFloat(variant.VEST4_score).toFixed(2)
-              : "N/A"}
+            {dbnsfpLoading ? (
+              <span className="text-gray-400 animate-pulse">Loading...</span>
+            ) : dbnsfpScores &&
+              dbnsfpScores.vest4 !== null &&
+              dbnsfpScores.vest4 !== undefined ? (
+              parseFloat(dbnsfpScores.vest4).toFixed(3)
+            ) : (
+              "N/A"
+            )}
           </p>
         </div>
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -262,9 +382,17 @@ export default function AnnotationTab({
             REVEL Score
           </h3>
           <p
-            className={`text-xs font-mono font-bold ${Number(variant.REVEL) >= 0.5 ? "text-red-500 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}
+            className={`text-xs font-mono font-bold ${(dbnsfpScores ? Number(dbnsfpScores.revel) : Number(variant.REVEL)) >= 0.5 ? "text-red-500 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}
           >
-            {variant.REVEL ? Number(variant.REVEL).toFixed(3) : "N/A"}
+            {dbnsfpLoading ? (
+              <span className="text-gray-400 animate-pulse">Loading...</span>
+            ) : dbnsfpScores &&
+              dbnsfpScores.revel !== null &&
+              dbnsfpScores.revel !== undefined ? (
+              Number(dbnsfpScores.revel).toFixed(3)
+            ) : (
+              "N/A"
+            )}
           </p>
         </div>
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -272,9 +400,15 @@ export default function AnnotationTab({
             MutPred Score
           </h3>
           <p className="text-xs font-mono font-bold text-gray-900 dark:text-gray-100 uppercase">
-            {variant?.MutPred_score
-              ? parseFloat(variant.MutPred_score).toFixed(2)
-              : "N/A"}
+            {dbnsfpLoading ? (
+              <span className="text-gray-400 animate-pulse">Loading...</span>
+            ) : dbnsfpScores &&
+              dbnsfpScores.mutpred !== null &&
+              dbnsfpScores.mutpred !== undefined ? (
+              parseFloat(dbnsfpScores.mutpred).toFixed(3)
+            ) : (
+              "N/A"
+            )}
           </p>
         </div>
         <div className="bg-white dark:bg-scientific-panel p-3 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -282,14 +416,27 @@ export default function AnnotationTab({
             BayesDel Score
           </h3>
           <p className="text-xs font-mono font-bold text-gray-900 dark:text-gray-100 uppercase">
-            {variant.BayesDel_addAF_score
-              ? parseFloat(variant.BayesDel_addAF_score).toFixed(2)
-              : "N/A"}
+            {dbnsfpLoading ? (
+              <span className="text-gray-400 animate-pulse">Loading...</span>
+            ) : dbnsfpScores &&
+              dbnsfpScores.bayesdel !== null &&
+              dbnsfpScores.bayesdel !== undefined ? (
+              parseFloat(dbnsfpScores.bayesdel).toFixed(3)
+            ) : (
+              "N/A"
+            )}
           </p>
         </div>
       </div>
 
-      {isCustom && plotPoints.length > 0 ? (
+      {dbnsfpPlotLoading ? (
+        <div className="flex flex-col items-center justify-center p-16 text-center text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-scientific-panel/30 border border-dashed border-gray-200 dark:border-scientific-border rounded-xl">
+          <div className="w-8 h-8 border-4 border-primary-500/20 border-t-primary-500 rounded-full animate-spin mb-3"></div>
+          <p className="text-sm font-medium">
+            Fetching annotation distributions from database...
+          </p>
+        </div>
+      ) : isCustom && plotPoints.length > 0 ? (
         <div className="bg-white dark:bg-scientific-panel rounded-lg border border-gray-200 dark:border-scientific-border shadow-sm overflow-hidden">
           <div className="p-3 dark:bg-black/20 flex items-center justify-between gap-3">
             <h3 className="font-semibold text-sm">

@@ -865,7 +865,7 @@ export default React.forwardRef(function CustomVariantTable(
   return (
     <div className="border border-gray-200 dark:border-scientific-border rounded-b-lg shadow-sm">
       {/* SCROLL CONTAINER */}
-      <div className="max-h-[520px] overflow-y-auto">
+      <div className="max-h-[520px] overflow-y-auto pb-16">
         <table className="w-full text-left border-collapse">
           <thead className="sticky top-0 z-30">
             {/* Group Headers */}
