@@ -259,13 +259,10 @@ export default function CSVUpload({ gene, onUploadSuccess }: CSVUploadProps) {
             { name: "c.change", req: true },
             { name: "p.change", req: true },
             { name: "ID", req: true },
+            { name: "transcript", req: true },
             { name: "ACMG", req: false },
             { name: "Functional", req: false },
             { name: "Functional_Pvalue", req: false },
-            { name: "Meta_height", req: false },
-            { name: "Meta_height_SE", req: false },
-            { name: "Meta_ratio", req: false },
-            { name: "Meta_ratio_SE", req: false },
             { name: "condition", req: false },
           ].map((c) => (
             <span
